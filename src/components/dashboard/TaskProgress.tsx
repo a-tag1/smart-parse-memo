@@ -179,10 +179,23 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }:
                   </svg>
                 )}
               </button>
-              <span className={`text-xs ${sub.done ? 'line-through text-gray-600' : 'text-gray-400'}`}>
-                {sub.text}
-                {sub.doneDate && <span className="text-gray-600 ml-1">({sub.doneDate})</span>}
-              </span>
+              {(() => {
+                const isHighlight = sub.text.startsWith('★');
+                if (isHighlight) {
+                  return (
+                    <span className={`text-sm font-bold px-1 rounded ${sub.done ? 'line-through text-blue-800 bg-blue-950' : 'text-blue-200 bg-blue-900'}`}>
+                      {sub.text}
+                      {sub.doneDate && <span className="font-normal text-blue-700 ml-1">({sub.doneDate})</span>}
+                    </span>
+                  );
+                }
+                return (
+                  <span className={`text-xs ${sub.done ? 'line-through text-gray-600' : 'text-gray-400'}`}>
+                    {sub.text}
+                    {sub.doneDate && <span className="text-gray-600 ml-1">({sub.doneDate})</span>}
+                  </span>
+                );
+              })()}
             </div>
           ))}
         </div>
