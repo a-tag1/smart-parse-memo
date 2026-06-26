@@ -21,6 +21,7 @@ export interface Task {
   doneDate?: string;
   subTasks:  SubTask[];
   lineIndex: number;   // rawText 内の行番号 (0-based)
+  priority:  'high' | 'low'; // #### 優先度高/低 セクションによる分類
 }
 
 export interface WorkSummaryEntry {
@@ -61,7 +62,7 @@ export function parseText(rawText: string): ParsedData {
       currentSection = 'completedTasks'; continue;
     } else if (/###\s*[３3][\．.]?\s*タスク/.test(trimmed)) {
       currentSection = 'tasks'; continue;
-    } else if (/^###/.test(trimmed) && trimmed.length > 3) {
+    } else if (/^###(?!#)/.test(trimmed) && trimmed.length > 3) {
       currentSection = 'none'; continue;
     }
 
@@ -138,14 +139,30 @@ const TASK_ID_RE      = /^(\d+-\d+(?:_[A-Za-z]+)?)\s*[\uff1a:]/;
 const DONE_MARK_RE    = /\s*済\((\d+\/\d+)\)/;
 const SUBTASK_DONE_RE = /^(\s+)済\((\d+\/\d+)\)\s*[・•]\s*(.*)/;
 const SUBTASK_TODO_RE = /^(\s+)[・•]\s*(.*)/;
+const PRIORITY_HIGH_RE = /^####\s*優先度高/;
+const PRIORITY_LOW_RE  = /^####\s*優先度低/;
 
 function extractTasks(lines: string[], lineIndices: number[]): Task[] {
   const results: Task[]  = [];
   let currentTask: Task | null = null;
+  let currentPriority: 'high' | 'low' = 'high';
 
   for (let i = 0; i < lines.length; i++) {
     const line    = lines[i];
     const lineIdx = lineIndices[i];
+    const trimmed = line.trim();
+
+    // #### 優先度高 / #### 優先度低 セクションヘッダを検出
+    if (PRIORITY_HIGH_RE.test(trimmed)) {
+      if (currentTask) { results.push(currentTask); currentTask = null; }
+      currentPriority = 'high';
+      continue;
+    }
+    if (PRIORITY_LOW_RE.test(trimmed)) {
+      if (currentTask) { results.push(currentTask); currentTask = null; }
+      currentPriority = 'low';
+      continue;
+    }
 
     if (currentTask) {
       const doneSubMatch = line.match(SUBTASK_DONE_RE);
@@ -169,7 +186,6 @@ function extractTasks(lines: string[], lineIndices: number[]): Task[] {
       }
     }
 
-    const trimmed = line.trim();
     if (!trimmed) continue;
 
     const idMatch = trimmed.match(TASK_ID_RE);
@@ -205,6 +221,7 @@ function extractTasks(lines: string[], lineIndices: number[]): Task[] {
       doneDate,
       subTasks:  [],
       lineIndex: lineIdx,
+      priority:  currentPriority,
     };
   }
 

@@ -16,6 +16,7 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
   const { saveToday } = useFileAccess();
 
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showLowPriority, setShowLowPriority] = useState(false);
   const readonly = activeTab === 'archive';
 
   const handleCompleteTask = useCallback(
@@ -65,19 +66,56 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
         <p className="text-gray-700 text-xs py-2 text-center">
           タスク行（X-XX：）が見つかりません
         </p>
-      ) : (
-        <div className="space-y-2">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              readonly={readonly}
-              onComplete={handleCompleteTask}
-              onToggleSubTask={handleToggleSubTask}
-            />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const highTasks = tasks.filter((t) => t.priority !== 'low');
+        const lowTasks  = tasks.filter((t) => t.priority === 'low');
+        const hasPriority = lowTasks.length > 0;
+        return (
+          <div>
+            {hasPriority && (
+              <div className="text-[10px] font-semibold text-yellow-500 uppercase tracking-wider mb-1.5">
+                優先度高
+              </div>
+            )}
+            <div className="space-y-2">
+              {highTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  readonly={readonly}
+                  onComplete={handleCompleteTask}
+                  onToggleSubTask={handleToggleSubTask}
+                />
+              ))}
+            </div>
+            {hasPriority && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLowPriority((v) => !v)}
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  <span>{showLowPriority ? '▼' : '▶'}</span>
+                  <span>優先度低（{lowTasks.length}件）</span>
+                </button>
+                {showLowPriority && (
+                  <div className="mt-1.5 space-y-2">
+                    {lowTasks.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        readonly={readonly}
+                        onComplete={handleCompleteTask}
+                        onToggleSubTask={handleToggleSubTask}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {completedTasks.length > 0 && (
         <div className="mt-3">
