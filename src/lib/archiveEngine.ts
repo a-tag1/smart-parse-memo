@@ -63,10 +63,39 @@ export function extractTasksSection(rawText: string): string {
   return taskLines.join('\n');
 }
 
+/** rawText から ### ４．当月完了タスク セクションの中身を抽出する */
+export function extractCompletedTasksSection(rawText: string): string {
+  const lines = rawText.split('\n');
+  let inSection = false;
+  const sectionLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/###\s*[４4][\．.]?\s*当月完了タスク/.test(trimmed)) {
+      inSection = true;
+      continue;
+    } else if (/^###/.test(trimmed) && inSection) {
+      break;
+    }
+    if (inSection) sectionLines.push(line);
+  }
+
+  while (sectionLines.length && sectionLines[0].trim() === '') sectionLines.shift();
+  while (sectionLines.length && sectionLines[sectionLines.length - 1].trim() === '') sectionLines.pop();
+  return sectionLines.join('\n');
+}
+
 /** daily_today.txt の新規テンプレートを生成する（予定・結果クリア、タスクは引継ぎ） */
-export function buildTodayTemplate(date: string, tasksSectionText: string): string {
+export function buildTodayTemplate(
+  date: string,
+  tasksSectionText: string,
+  completedTasksSectionText = '',
+): string {
   const tasksContent = tasksSectionText ? `\n${tasksSectionText}` : '';
-  return `DATE: ${date}\n\n### １．本日予定\n\n### ２．本日結果\n\n### ３．タスク${tasksContent}`;
+  const completedSection = completedTasksSectionText
+    ? `\n\n### ４．当月完了タスク\n${completedTasksSectionText}`
+    : '';
+  return `DATE: ${date}\n\n### １．本日予定\n\n### ２．本日結果\n\n### ３．タスク${tasksContent}${completedSection}`;
 }
 
 /** 今日の日付を "YYYY-MM-DD" で返す */

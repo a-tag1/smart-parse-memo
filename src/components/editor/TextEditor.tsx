@@ -1,13 +1,12 @@
-import { useRef, useCallback, useEffect } from 'react';
+﻿import { useRef, useCallback } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 import { useShortcuts } from '../../hooks/useShortcuts';
 
-const DEBOUNCE_MS = 1000;
-
 export function TextEditor() {
-  const rawText    = useAppStore((s) => s.rawText);
-  const setRawText = useAppStore((s) => s.setRawText);
+  const rawText         = useAppStore((s) => s.rawText);
+  const setRawText      = useAppStore((s) => s.setRawText);
+  const setSaveStatus   = useAppStore((s) => s.setSaveStatus);
   const todayFileHandle = useAppStore((s) => s.todayFileHandle);
 
   const { saveToday }        = useFileAccess();
@@ -15,7 +14,8 @@ export function TextEditor() {
 
   const textareaRef    = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
-  const saveTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawTextRef     = useRef(rawText);
+  rawTextRef.current   = rawText;
 
   // スクロール同期
   const syncScroll = useCallback(() => {
@@ -24,31 +24,29 @@ export function TextEditor() {
     }
   }, []);
 
-  // テキスト変更 + デバウンス保存
+  // テキスト変更
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const text = e.target.value;
       setRawText(text);
-
-      if (todayFileHandle) {
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-          saveToday(text);
-        }, DEBOUNCE_MS);
-      }
+      if (todayFileHandle) setSaveStatus('unsaved');
     },
-    [setRawText, saveToday, todayFileHandle],
+    [setRawText, todayFileHandle, setSaveStatus],
   );
 
-  // キーボードショートカット
+  // キーボードショートカット（Shift+Enter / Ctrl+S）
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
         handleShiftEnter(e.currentTarget);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveToday(rawTextRef.current);
+      }
     },
-    [handleShiftEnter],
+    [handleShiftEnter, saveToday],
   );
 
   // Tab キー（インデント）
@@ -59,8 +57,7 @@ export function TextEditor() {
         const ta    = e.currentTarget;
         const start = ta.selectionStart;
         const end   = ta.selectionEnd;
-        const newText =
-          rawText.slice(0, start) + '  ' + rawText.slice(end);
+        const newText = rawText.slice(0, start) + '  ' + rawText.slice(end);
         setRawText(newText);
         requestAnimationFrame(() => {
           ta.selectionStart = start + 2;
@@ -70,12 +67,6 @@ export function TextEditor() {
     },
     [rawText, setRawText],
   );
-
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, []);
 
   const lines = rawText.split('\n');
 

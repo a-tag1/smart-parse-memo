@@ -4,6 +4,7 @@ import {
   getTodayDate,
   extractDateFromText,
   extractTasksSection,
+  extractCompletedTasksSection,
   buildTodayTemplate,
   appendToArchive,
   parseArchive,
@@ -131,10 +132,11 @@ export function useFileAccess() {
 
       setArchiveEntries(parseArchive(newArchiveText));
 
-      // 2. 新しい daily_today.txt を生成（タスクのみ引継ぎ）
-      const today          = getTodayDate();
-      const tasksSectionText = extractTasksSection(rawText);
-      const newTodayText   = buildTodayTemplate(today, tasksSectionText);
+      // 2. 新しい daily_today.txt を生成（タスク・当月完了タスクは引継ぎ）
+      const today                  = getTodayDate();
+      const tasksSectionText           = extractTasksSection(rawText);
+      const completedTasksSectionText  = extractCompletedTasksSection(rawText);
+      const newTodayText           = buildTodayTemplate(today, tasksSectionText, completedTasksSectionText);
 
       const todayWritable = await todayFileHandle.createWritable();
       await todayWritable.write(newTodayText);

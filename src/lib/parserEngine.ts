@@ -1,63 +1,81 @@
-export interface Schedule {
-  taskName: string;
+﻿export interface Schedule {
+  taskName:  string;
   startTime: string; // "H:MM" or "HH:MM"
-  endTime: string;
-  type: 'plan' | 'result';
-  itemId?: string;
+  endTime:   string;
+  type:      'plan' | 'result';
+  itemId?:   string;
+}
+
+export interface SubTask {
+  text:      string;
+  done:      boolean;
+  doneDate?: string;
+  lineIndex: number;  // rawText 内の行番号 (0-based)
 }
 
 export interface Task {
-  id: string;
-  title: string;
-  project: string;
-  status: 'todo' | 'done';
+  id:        string;
+  title:     string;
+  project:   string;   // 明示指定がある場合のみ。なければ空文字
+  status:    'todo' | 'done';
   doneDate?: string;
+  subTasks:  SubTask[];
+  lineIndex: number;   // rawText 内の行番号 (0-based)
 }
 
 export interface WorkSummaryEntry {
-  label: string;        // タスク名（時刻なし）
-  totalMinutes: number; // 同一ラベルの合計分数
+  label:        string;
+  totalMinutes: number;
 }
 
 export interface ParsedData {
-  schedules:   Schedule[];
-  tasks:       Task[];
-  workSummary: WorkSummaryEntry[];
+  schedules:      Schedule[];
+  tasks:          Task[];        // ### ３．タスク（アクティブ）
+  completedTasks: Task[];        // ### ４．当月完了タスク
+  workSummary:    WorkSummaryEntry[];
 }
 
 // ── メインのパース関数 ──────────────────────────────────────────
 export function parseText(rawText: string): ParsedData {
   const lines = rawText.split('\n');
 
-  type Section = 'none' | 'plan' | 'result' | 'tasks';
+  type Section = 'none' | 'plan' | 'result' | 'tasks' | 'completedTasks';
   let currentSection: Section = 'none';
 
-  const planLines: string[] = [];
-  const resultLines: string[] = [];
-  const taskLines: string[] = [];
+  const planLines:                string[] = [];
+  const resultLines:              string[] = [];
+  const taskLines:                string[] = [];
+  const taskLineIndices:          number[] = [];
+  const completedTaskLines:       string[] = [];
+  const completedTaskLineIndices: number[] = [];
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line    = lines[i];
     const trimmed = line.trim();
 
-    // セクション見出し検出（全角・半角対応）
-    if (/###\s*[１1１][\．\.]?\s*本日予定/.test(trimmed)) {
-      currentSection = 'plan';
-      continue;
-    } else if (/###\s*[２2２][\．\.]?\s*本日結果/.test(trimmed)) {
-      currentSection = 'result';
-      continue;
-    } else if (/###\s*[３3３][\．\.]?\s*タスク/.test(trimmed)) {
-      currentSection = 'tasks';
-      continue;
+    if (/###\s*[１1][\．.]?\s*本日予定/.test(trimmed)) {
+      currentSection = 'plan'; continue;
+    } else if (/###\s*[２2][\．.]?\s*本日結果/.test(trimmed)) {
+      currentSection = 'result'; continue;
+    } else if (/###\s*[４4][\．.]?\s*当月完了タスク/.test(trimmed)) {
+      currentSection = 'completedTasks'; continue;
+    } else if (/###\s*[３3][\．.]?\s*タスク/.test(trimmed)) {
+      currentSection = 'tasks'; continue;
     } else if (/^###/.test(trimmed) && trimmed.length > 3) {
-      currentSection = 'none';
-      continue;
+      currentSection = 'none'; continue;
     }
 
     switch (currentSection) {
       case 'plan':   planLines.push(line);   break;
       case 'result': resultLines.push(line); break;
-      case 'tasks':  taskLines.push(line);   break;
+      case 'tasks':
+        taskLines.push(line);
+        taskLineIndices.push(i);
+        break;
+      case 'completedTasks':
+        completedTaskLines.push(line);
+        completedTaskLineIndices.push(i);
+        break;
     }
   }
 
@@ -66,15 +84,16 @@ export function parseText(rawText: string): ParsedData {
       ...extractSchedules(planLines, 'plan'),
       ...extractSchedules(resultLines, 'result'),
     ],
-    tasks:       extractTasks(taskLines),
-    workSummary: [], // summaryEngineにて useParser 内で計算
+    tasks:          extractTasks(taskLines, taskLineIndices),
+    completedTasks: extractTasks(completedTaskLines, completedTaskLineIndices),
+    workSummary:    [],
   };
 }
 
 // ── スケジュール抽出 ────────────────────────────────────────────
 // 書式例: 6-22：北海道信連：9:30-10:00
 const TIME_RANGE_RE = /(\d{1,2}:\d{2})\s*[-－]\s*(\d{1,2}:\d{2})/;
-const ITEM_ID_RE = /^(\d+-\d+)(?:_[A-Za-z]+)?\s*[\uff1a:]\s*/; // 行頭の "X-XX：" または "X-XX_A："
+const ITEM_ID_RE    = /^(\d+-\d+)(?:_[A-Za-z]+)?\s*[\uff1a:]\s*/;
 
 function extractSchedules(lines: string[], type: 'plan' | 'result'): Schedule[] {
   const results: Schedule[] = [];
@@ -89,9 +108,8 @@ function extractSchedules(lines: string[], type: 'plan' | 'result'): Schedule[] 
     const startTime = timeMatch[1];
     const endTime   = timeMatch[2];
 
-    // 時間範囲より前の部分でタスク名を組み立てる
     const beforeTime = trimmed.slice(0, trimmed.indexOf(timeMatch[0]));
-    let remainder = beforeTime;
+    let remainder    = beforeTime;
 
     let itemId: string | undefined;
     const idMatch = remainder.match(ITEM_ID_RE);
@@ -100,7 +118,6 @@ function extractSchedules(lines: string[], type: 'plan' | 'result'): Schedule[] 
       remainder = remainder.slice(idMatch[0].length);
     }
 
-    // ：で区切られた最後のトークンをタスク名とする
     const parts = remainder
       .split(/[\uff1a:]/)
       .map(p => p.trim())
@@ -115,52 +132,147 @@ function extractSchedules(lines: string[], type: 'plan' | 'result'): Schedule[] 
 }
 
 // ── タスク抽出 ────────────────────────────────────────────────
-// 書式例: 6-23：北海道信連：やること  / 6-23：やること 済(6/24)
-const TASK_ID_RE   = /^(\d+-\d+)(?:_[A-Za-z]+)?\s*[\uff1a:\s]/;
-const DONE_MARK_RE = /済\((\d+\/\d+)\)/;
+// メイン:    6-23_C：タスク名 / 6-23：プロジェクト：タスク名 / 6-23：タスク名 済(6/24)
+// サブタスク: 　・タスク名 / 　済(6/19)・タスク名
+const TASK_ID_RE      = /^(\d+-\d+(?:_[A-Za-z]+)?)\s*[\uff1a:]/;
+const DONE_MARK_RE    = /\s*済\((\d+\/\d+)\)/;
+const SUBTASK_DONE_RE = /^(\s+)済\((\d+\/\d+)\)\s*[・•]\s*(.*)/;
+const SUBTASK_TODO_RE = /^(\s+)[・•]\s*(.*)/;
 
-function extractTasks(lines: string[]): Task[] {
-  const results: Task[] = [];
+function extractTasks(lines: string[], lineIndices: number[]): Task[] {
+  const results: Task[]  = [];
+  let currentTask: Task | null = null;
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line    = lines[i];
+    const lineIdx = lineIndices[i];
+
+    if (currentTask) {
+      const doneSubMatch = line.match(SUBTASK_DONE_RE);
+      const todoSubMatch = doneSubMatch ? null : line.match(SUBTASK_TODO_RE);
+
+      if (doneSubMatch) {
+        currentTask.subTasks.push({
+          text:      doneSubMatch[3].trim(),
+          done:      true,
+          doneDate:  doneSubMatch[2],
+          lineIndex: lineIdx,
+        });
+        continue;
+      } else if (todoSubMatch) {
+        currentTask.subTasks.push({
+          text:      todoSubMatch[2].trim(),
+          done:      false,
+          lineIndex: lineIdx,
+        });
+        continue;
+      }
+    }
+
     const trimmed = line.trim();
     if (!trimmed) continue;
 
     const idMatch = trimmed.match(TASK_ID_RE);
     if (!idMatch) continue;
 
-    const id = idMatch[1];
-    let body = trimmed.slice(idMatch[0].length).trim();
+    if (currentTask) results.push(currentTask);
 
-    // 済マーク検出
+    const id  = idMatch[1];
+    let body  = trimmed.slice(idMatch[0].length).trim();
+
     const doneMatch = body.match(DONE_MARK_RE);
     const isDone    = doneMatch !== null;
     const doneDate  = doneMatch?.[1];
     if (isDone) body = body.replace(DONE_MARK_RE, '').trim();
 
-    // プロジェクト名：タスク名 に分割
     const colonIdx = body.search(/[\uff1a:]/);
     let project: string;
-    let title: string;
+    let title:   string;
 
     if (colonIdx !== -1) {
       project = body.slice(0, colonIdx).trim();
       title   = body.slice(colonIdx + 1).trim();
     } else {
-      project = 'その他';
+      project = '';
       title   = body;
     }
 
-    results.push({
+    currentTask = {
       id,
-      title: title || body,
-      project: project || 'その他',
-      status: isDone ? 'done' : 'todo',
+      title:     title || body,
+      project,
+      status:    isDone ? 'done' : 'todo',
       doneDate,
-    });
+      subTasks:  [],
+      lineIndex: lineIdx,
+    };
   }
 
+  if (currentTask) results.push(currentTask);
   return results;
+}
+
+// ── テキスト操作ユーティリティ ─────────────────────────────────
+
+/** 済マーク用の今日日付を返す（例: "6/25"） */
+export function getTodayMarkDate(): string {
+  const d = new Date();
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/**
+ * サブタスクの完了状態をトグルし、更新後の rawText を返す。
+ *  done=false → 行頭に `済(M/D)` を付加
+ *  done=true  → 行頭の `済(...)` を除去
+ */
+export function toggleSubTaskDone(rawText: string, subTask: SubTask): string {
+  const lines = rawText.split('\n');
+  const line  = lines[subTask.lineIndex];
+  if (line === undefined) return rawText;
+
+  if (subTask.done) {
+    lines[subTask.lineIndex] = line.replace(/^(\s*)済\(\d+\/\d+\)\s*/, '$1');
+  } else {
+    const today = getTodayMarkDate();
+    lines[subTask.lineIndex] = line.replace(/^(\s*)([・•])/, `$1済(${today})$2`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * メインタスクに済マークを付加し、タスクブロック（メイン＋サブタスク）を
+ * "### ４．当月完了タスク" セクションへ移動した rawText を返す。
+ */
+export function completeAndMoveTask(rawText: string, task: Task): string {
+  const lines = rawText.split('\n');
+  const today = getTodayMarkDate();
+
+  if (task.status !== 'done') {
+    const mainLine = lines[task.lineIndex] ?? '';
+    lines[task.lineIndex] = `${mainLine.trimEnd()} 済(${today})`;
+  }
+
+  const allIndices = [task.lineIndex, ...task.subTasks.map(s => s.lineIndex)].sort((a, b) => a - b);
+  const blockStart = allIndices[0];
+  const blockEnd   = allIndices[allIndices.length - 1];
+  const taskBlock  = lines.slice(blockStart, blockEnd + 1);
+  lines.splice(blockStart, blockEnd - blockStart + 1);
+
+  const completedRe = /^###\s*[４4][\．.]?\s*当月完了タスク/;
+  let sectionIdx = lines.findIndex(l => completedRe.test(l.trim()));
+
+  if (sectionIdx === -1) {
+    if (lines[lines.length - 1]?.trim() !== '') lines.push('');
+    lines.push('### ４．当月完了タスク');
+    sectionIdx = lines.length - 1;
+  }
+
+  let insertAt = sectionIdx + 1;
+  while (insertAt < lines.length && !lines[insertAt].trim().startsWith('###')) {
+    insertAt++;
+  }
+  lines.splice(insertAt, 0, ...taskBlock, '');
+  return lines.join('\n');
 }
 
 // ── 入力アシスト用ユーティリティ ─────────────────────────────

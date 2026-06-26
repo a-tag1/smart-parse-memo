@@ -23,11 +23,12 @@ export function InsightPanel() {
     );
   }
 
-  const { schedules, tasks, workSummary } = parsedData;
+  const { schedules, tasks, completedTasks, workSummary } = parsedData;
 
   const planMinutes   = calcTotalMinutes(schedules.filter((s) => s.type === 'plan'));
   const resultMinutes = calcTotalMinutes(schedules.filter((s) => s.type === 'result'));
-  const doneTasks     = tasks.filter((t) => t.status === 'done').length;
+  const doneTasks     = tasks.filter((t) => t.status === 'done').length + completedTasks.length;
+  const totalTasks    = tasks.length + completedTasks.length;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-gray-950 text-white">
@@ -37,7 +38,7 @@ export function InsightPanel() {
         <SummaryCard label="実績時間" value={minutesToHHMM(resultMinutes)} color="text-emerald-400" />
         <SummaryCard
           label="完了タスク"
-          value={`${doneTasks} / ${tasks.length}`}
+          value={`${doneTasks} / ${totalTasks}`}
           color="text-purple-400"
         />
       </div>
@@ -45,8 +46,8 @@ export function InsightPanel() {
       {/* ── タイムライン ──────────────────────── */}
       <TimelineChart schedules={schedules} />
 
-      {/* ── 案件別進捗 ───────────────────────── */}
-      <TaskProgress tasks={tasks} />
+      {/* ── タスク進捗 ─────────────────────────── */}
+      <TaskProgress tasks={tasks} completedTasks={completedTasks} />
 
       {/* ── 稼働サマリー（日報用）────────────── */}
       <WorkSummary entries={workSummary} />

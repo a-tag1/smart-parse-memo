@@ -1,80 +1,192 @@
-import type { Task } from '../../lib/parserEngine';
+﻿import { useState, useCallback } from 'react';
+import { useAppStore } from '../../store/appStore';
+import { useFileAccess } from '../../hooks/useFileAccess';
+import { toggleSubTaskDone, completeAndMoveTask } from '../../lib/parserEngine';
+import type { Task, SubTask } from '../../lib/parserEngine';
 
 interface Props {
-  tasks: Task[];
+  tasks:          Task[];
+  completedTasks: Task[];
 }
 
-export function TaskProgress({ tasks }: Props) {
-  // プロジェクト別にグループ化
-  const groups = tasks.reduce<Record<string, Task[]>>((acc, t) => {
-    (acc[t.project] ??= []).push(t);
-    return acc;
-  }, {});
+export function TaskProgress({ tasks, completedTasks }: Props) {
+  const rawText       = useAppStore((s) => s.rawText);
+  const setRawText    = useAppStore((s) => s.setRawText);
+  const activeTab     = useAppStore((s) => s.activeTab);
+  const { saveToday } = useFileAccess();
 
-  const entries = Object.entries(groups);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const readonly = activeTab === 'archive';
+
+  const handleCompleteTask = useCallback(
+    (task: Task) => {
+      if (readonly) return;
+      const next = completeAndMoveTask(rawText, task);
+      setRawText(next);
+      saveToday(next);
+    },
+    [rawText, setRawText, saveToday, readonly],
+  );
+
+  const handleToggleSubTask = useCallback(
+    (subTask: SubTask) => {
+      if (readonly) return;
+      const next = toggleSubTaskDone(rawText, subTask);
+      setRawText(next);
+      saveToday(next);
+    },
+    [rawText, setRawText, saveToday, readonly],
+  );
+
+  const totalDone = tasks.filter((t) => t.status === 'done').length + completedTasks.length;
+  const totalAll  = tasks.length + completedTasks.length;
+  const percent   = totalAll === 0 ? 0 : Math.round((totalDone / totalAll) * 100);
 
   return (
     <section className="px-4 py-3 border-b border-gray-800">
-      <h2 className="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider">
-        案件別タスク進捗
+      <h2 className="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-wider">
+        タスク進捗
       </h2>
 
-      {entries.length === 0 ? (
-        <p className="text-gray-700 text-xs py-3 text-center">
+      <div className="mb-3">
+        <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <span>全体</span>
+          <span>{totalDone} / {totalAll}（{percent}%）</span>
+        </div>
+        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-emerald-500 rounded-full transition-[width] duration-500"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+
+      {tasks.length === 0 ? (
+        <p className="text-gray-700 text-xs py-2 text-center">
           タスク行（X-XX：）が見つかりません
         </p>
       ) : (
-        <div className="space-y-2.5">
-          {entries.map(([project, projectTasks]) => {
-            const done    = projectTasks.filter((t) => t.status === 'done').length;
-            const total   = projectTasks.length;
-            const percent = Math.round((done / total) * 100);
+        <div className="space-y-2">
+          {tasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              readonly={readonly}
+              onComplete={handleCompleteTask}
+              onToggleSubTask={handleToggleSubTask}
+            />
+          ))}
+        </div>
+      )}
 
-            return (
-              <div key={project}>
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-xs text-gray-300 truncate max-w-[70%]">
-                    {project}
-                  </span>
-                  <span className="text-[10px] text-gray-500 shrink-0">
-                    {done}/{total}（{percent}%）
-                  </span>
-                </div>
-                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 rounded-full transition-[width] duration-500"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
-                {/* タスク一覧（折りたたみなし） */}
-                <div className="mt-1 space-y-0.5">
-                  {projectTasks.map((t) => (
-                    <div key={t.id} className="flex items-center gap-1.5 text-[10px]">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          t.status === 'done' ? 'bg-emerald-500' : 'bg-gray-600'
-                        }`}
-                      />
-                      <span
-                        className={
-                          t.status === 'done'
-                            ? 'text-gray-600 line-through'
-                            : 'text-gray-400'
-                        }
-                      >
-                        [{t.id}] {t.title}
-                        {t.doneDate && (
-                          <span className="ml-1 text-emerald-700">済({t.doneDate})</span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      {completedTasks.length > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowCompleted((v) => !v)}
+            className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+          >
+            <span>{showCompleted ? '▼' : '▶'}</span>
+            <span>当月完了タスク（{completedTasks.length}件）</span>
+          </button>
+          {showCompleted && (
+            <div className="mt-1.5 space-y-1.5 pl-2 border-l border-gray-800">
+              {completedTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  readonly={readonly}
+                  faded
+                  onComplete={handleCompleteTask}
+                  onToggleSubTask={handleToggleSubTask}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
+  );
+}
+
+interface TaskRowProps {
+  task:            Task;
+  readonly:        boolean;
+  faded?:          boolean;
+  onComplete:      (task: Task) => void;
+  onToggleSubTask: (sub: SubTask) => void;
+}
+
+function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }: TaskRowProps) {
+  const isDone = task.status === 'done';
+
+  return (
+    <div className={faded ? 'opacity-60' : ''}>
+      <div className="flex items-start gap-1.5">
+        <button
+          type="button"
+          disabled={readonly || isDone}
+          onClick={() => onComplete(task)}
+          title={isDone ? '完了済み' : 'タスクを完了にして移動'}
+          className={`mt-0.5 w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+            isDone
+              ? 'bg-emerald-700 border-emerald-600 cursor-default'
+              : readonly
+              ? 'border-gray-700 cursor-default'
+              : 'border-gray-600 hover:border-emerald-400 hover:bg-emerald-900/30 cursor-pointer'
+          }`}
+        >
+          {isDone && (
+            <svg className="w-2 h-2 text-emerald-300" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-mono text-gray-500 mr-1">[{task.id}]</span>
+          {task.project && (
+            <span className="text-xs text-blue-400 mr-1">{task.project}:</span>
+          )}
+          <span className={`text-sm ${isDone ? 'line-through text-gray-600' : 'text-gray-200'}`}>
+            {task.title}
+          </span>
+          {task.doneDate && (
+            <span className="text-xs text-gray-600 ml-1">({task.doneDate})</span>
+          )}
+        </div>
+      </div>
+
+      {task.subTasks.length > 0 && (
+        <div className="ml-5 mt-0.5 space-y-0.5">
+          {task.subTasks.map((sub, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={readonly}
+                onClick={() => onToggleSubTask(sub)}
+                title={sub.done ? '未完了に戻す' : '完了にする'}
+                className={`w-3 h-3 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                  sub.done
+                    ? 'bg-emerald-800 border-emerald-600'
+                    : readonly
+                    ? 'border-gray-700 cursor-default'
+                    : 'border-gray-600 hover:border-emerald-400 hover:bg-emerald-900/30 cursor-pointer'
+                }`}
+              >
+                {sub.done && (
+                  <svg className="w-1.5 h-1.5 text-emerald-300" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <span className={`text-xs ${sub.done ? 'line-through text-gray-600' : 'text-gray-400'}`}>
+                {sub.text}
+                {sub.doneDate && <span className="text-gray-600 ml-1">({sub.doneDate})</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
