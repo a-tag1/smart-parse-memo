@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { TimelineChart } from './TimelineChart';
 import { TaskProgress } from './TaskProgress';
 import { WorkSummary } from './WorkSummary';
 import { timeToMinutes, minutesToHHMM } from '../../lib/parserEngine';
 import type { Schedule } from '../../lib/parserEngine';
+
+type PanelTab = 'task' | 'summary' | 'timeline';
 
 function calcTotalMinutes(schedules: Schedule[]): number {
   return schedules.reduce((sum, s) => {
@@ -12,8 +15,15 @@ function calcTotalMinutes(schedules: Schedule[]): number {
   }, 0);
 }
 
+const TABS: { id: PanelTab; label: string }[] = [
+  { id: 'task',     label: 'タスク進捗' },
+  { id: 'summary',  label: '稼働サマリー' },
+  { id: 'timeline', label: 'タイムライン' },
+];
+
 export function InsightPanel() {
   const parsedData = useAppStore((s) => s.parsedData);
+  const [activeTab, setActiveTab] = useState<PanelTab>('task');
 
   if (!parsedData) {
     return (
@@ -31,9 +41,9 @@ export function InsightPanel() {
   const totalTasks    = tasks.length + completedTasks.length;
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-gray-950 text-white">
+    <div className="flex flex-col h-full bg-gray-950 text-white">
       {/* ── サマリーカード ─────────────────────── */}
-      <div className="flex gap-2 px-4 py-3 border-b border-gray-800">
+      <div className="flex gap-2 px-4 py-3 border-b border-gray-800 shrink-0">
         <SummaryCard label="予定時間" value={minutesToHHMM(planMinutes)} color="text-blue-400" />
         <SummaryCard label="実績時間" value={minutesToHHMM(resultMinutes)} color="text-emerald-400" />
         <SummaryCard
@@ -43,14 +53,36 @@ export function InsightPanel() {
         />
       </div>
 
-      {/* ── タイムライン ──────────────────────── */}
-      <TimelineChart schedules={schedules} />
+      {/* ── タブバー ──────────────────────────── */}
+      <div className="flex shrink-0 border-b border-gray-800">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 py-2 text-xs font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'text-white border-b-2 border-blue-500'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* ── タスク進捗 ─────────────────────────── */}
-      <TaskProgress tasks={tasks} completedTasks={completedTasks} />
-
-      {/* ── 稼働サマリー（日報用）────────────── */}
-      <WorkSummary entries={workSummary} />
+      {/* ── タブコンテンツ ────────────────────── */}
+      <div className="flex-1 overflow-y-auto">
+        {activeTab === 'task' && (
+          <TaskProgress tasks={tasks} completedTasks={completedTasks} />
+        )}
+        {activeTab === 'summary' && (
+          <WorkSummary entries={workSummary} />
+        )}
+        {activeTab === 'timeline' && (
+          <TimelineChart schedules={schedules} />
+        )}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ interface Props {
 
 /** 稼働サマリー：時刻なし・同一タスク名を合算して表示（設計書 §5.2） */
 export function WorkSummary({ entries }: Props) {
+  const sorted = [...entries].sort((a, b) => b.totalMinutes - a.totalMinutes);
   const totalMinutes = entries.reduce((s, e) => s + e.totalMinutes, 0);
 
   return (
@@ -21,9 +22,9 @@ export function WorkSummary({ entries }: Props) {
         </p>
       ) : (
         <>
-          {/* 一覧表示 */}
-          <div className="space-y-1 mb-3">
-            {entries.map((entry) => (
+          {/* 一覧表示（合計時間多い順） */}
+          <div className="space-y-1">
+            {sorted.map((entry) => (
               <div key={entry.label} className="flex items-center justify-between">
                 <span className="text-sm text-gray-300 truncate flex-1 mr-2">{entry.label}</span>
                 <span className="text-xs text-emerald-400 shrink-0">
@@ -36,12 +37,6 @@ export function WorkSummary({ entries }: Props) {
               <span className="text-xs text-white font-semibold">{minutesToHHMM(totalMinutes)}</span>
             </div>
           </div>
-
-          {/* 日報コピー用テキスト（select-all でまとめてコピー可能） */}
-          <pre className="whitespace-pre-wrap font-mono text-[11px] text-gray-500 bg-gray-900 rounded p-3 leading-5 select-all">
-            {entries.map((e) => `${e.label}：${minutesToHHMM(e.totalMinutes)}`).join('\n')}
-            {`\n合計稼働：${minutesToHHMM(totalMinutes)}`}
-          </pre>
         </>
       )}
     </section>
