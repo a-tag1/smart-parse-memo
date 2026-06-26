@@ -1,6 +1,15 @@
 // File System Access API type declarations
 // https://wicg.github.io/file-system-access/
 
+interface FileSystemHandlePermissionDescriptor {
+  mode?: 'read' | 'readwrite';
+}
+
+interface FileSystemHandle {
+  queryPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+  requestPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+}
+
 interface FileSystemFileHandle extends FileSystemHandle {
   readonly kind: 'file';
   getFile(): Promise<File>;

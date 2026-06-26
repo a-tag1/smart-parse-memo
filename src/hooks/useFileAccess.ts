@@ -9,16 +9,28 @@ import {
   appendToArchive,
   parseArchive,
 } from '../lib/archiveEngine';
+import {
+  saveHandle,
+  loadHandle,
+  removeHandle,
+  HANDLE_KEY_TODAY,
+  HANDLE_KEY_ARCHIVE,
+  LS_KEY_TODAY_NAME,
+  LS_KEY_ARCHIVE_NAME,
+} from '../lib/fileHandleStorage';
 
 export function useFileAccess() {
-  const setRawText           = useAppStore((s) => s.setRawText);
-  const setTodayFileHandle   = useAppStore((s) => s.setTodayFileHandle);
-  const setArchiveFileHandle = useAppStore((s) => s.setArchiveFileHandle);
-  const setArchiveEntries    = useAppStore((s) => s.setArchiveEntries);
-  const setSaveStatus        = useAppStore((s) => s.setSaveStatus);
-  const todayFileHandle      = useAppStore((s) => s.todayFileHandle);
-  const archiveFileHandle    = useAppStore((s) => s.archiveFileHandle);
-  const rawText              = useAppStore((s) => s.rawText);
+  const setRawText            = useAppStore((s) => s.setRawText);
+  const setTodayFileHandle    = useAppStore((s) => s.setTodayFileHandle);
+  const setArchiveFileHandle  = useAppStore((s) => s.setArchiveFileHandle);
+  const setArchiveEntries     = useAppStore((s) => s.setArchiveEntries);
+  const setSaveStatus         = useAppStore((s) => s.setSaveStatus);
+  const setStoredTodayName    = useAppStore((s) => s.setStoredTodayName);
+  const setStoredArchiveName  = useAppStore((s) => s.setStoredArchiveName);
+  const setPendingReconnect   = useAppStore((s) => s.setPendingReconnect);
+  const todayFileHandle       = useAppStore((s) => s.todayFileHandle);
+  const archiveFileHandle     = useAppStore((s) => s.archiveFileHandle);
+  const rawText               = useAppStore((s) => s.rawText);
 
   /** daily_today.txt を開く。日付不一致の場合は通知を出す */
   const openTodayFile = useCallback(async () => {
@@ -36,6 +48,10 @@ export function useFileAccess() {
       setTodayFileHandle(handle);
       setRawText(text);
       setSaveStatus('saved');
+      await saveHandle(HANDLE_KEY_TODAY, handle);
+      localStorage.setItem(LS_KEY_TODAY_NAME, handle.name);
+      setStoredTodayName(handle.name);
+      setPendingReconnect(false);
 
       if (fileDate && fileDate !== today) {
         window.alert(
@@ -48,7 +64,7 @@ export function useFileAccess() {
         console.error('ファイルを開けませんでした:', err);
       }
     }
-  }, [setRawText, setTodayFileHandle, setSaveStatus]);
+  }, [setRawText, setTodayFileHandle, setSaveStatus, setStoredTodayName, setPendingReconnect]);
 
   /** archive_YYYY_MM.txt を開いてエントリを読み込む */
   const openArchiveFile = useCallback(async () => {
@@ -63,12 +79,15 @@ export function useFileAccess() {
 
       setArchiveFileHandle(handle);
       setArchiveEntries(parseArchive(text));
+      await saveHandle(HANDLE_KEY_ARCHIVE, handle);
+      localStorage.setItem(LS_KEY_ARCHIVE_NAME, handle.name);
+      setStoredArchiveName(handle.name);
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
         console.error('アーカイブファイルを開けませんでした:', err);
       }
     }
-  }, [setArchiveFileHandle, setArchiveEntries]);
+  }, [setArchiveFileHandle, setArchiveEntries, setStoredArchiveName]);
 
   /** daily_today.txt にデバウンス保存する */
   const saveToday = useCallback(
@@ -110,6 +129,9 @@ export function useFileAccess() {
         });
         archHandle = handle;
         setArchiveFileHandle(handle);
+        await saveHandle(HANDLE_KEY_ARCHIVE, handle);
+        localStorage.setItem(LS_KEY_ARCHIVE_NAME, handle.name);
+        setStoredArchiveName(handle.name);
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error('アーカイブファイルを開けませんでした:', err);
@@ -157,8 +179,136 @@ export function useFileAccess() {
     setArchiveFileHandle,
     setArchiveEntries,
     setSaveStatus,
+    setStoredArchiveName,
   ]);
 
-  return { openTodayFile, openArchiveFile, saveToday, performDayCopy };
+  /**
+   * 起動時: IndexedDB のハンドルを復元し、権限があれば自動読み込み。
+   * 権限が 'prompt' の場合は pendingReconnect = true にする。
+   */
+  const tryAutoReconnect = useCallback(async () => {
+    let hasPending = false;
+
+    try {
+      const todayHandle = await loadHandle(HANDLE_KEY_TODAY);
+      if (todayHandle) {
+        const perm = await todayHandle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          const file = await todayHandle.getFile();
+          const text = await file.text();
+          setTodayFileHandle(todayHandle);
+          setRawText(text);
+          setSaveStatus('saved');
+        } else {
+          hasPending = true;
+        }
+      }
+    } catch (e) {
+      console.warn('本日ハンドル復元失敗:', e);
+    }
+
+    try {
+      const archHandle = await loadHandle(HANDLE_KEY_ARCHIVE);
+      if (archHandle) {
+        const perm = await archHandle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          const file = await archHandle.getFile();
+          const text = await file.text();
+          setArchiveFileHandle(archHandle);
+          setArchiveEntries(parseArchive(text));
+        } else {
+          hasPending = true;
+        }
+      }
+    } catch (e) {
+      console.warn('アーカイブハンドル復元失敗:', e);
+    }
+
+    setPendingReconnect(hasPending);
+  }, [
+    setRawText,
+    setTodayFileHandle,
+    setArchiveFileHandle,
+    setArchiveEntries,
+    setSaveStatus,
+    setPendingReconnect,
+  ]);
+
+  /**
+   * ユーザー操作で権限を再リクエストし、保存済みファイルを再読み込みする。
+   * ※ 必ずユーザーの明示的な操作（ボタンクリック等）から呼び出すこと
+   */
+  const reconnect = useCallback(async () => {
+    let anyConnected = false;
+
+    try {
+      const todayHandle = await loadHandle(HANDLE_KEY_TODAY);
+      if (todayHandle) {
+        const perm = await todayHandle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          const file = await todayHandle.getFile();
+          const text = await file.text();
+          setTodayFileHandle(todayHandle);
+          setRawText(text);
+          setSaveStatus('saved');
+          anyConnected = true;
+        }
+      }
+    } catch (e) {
+      console.warn('本日ファイル再接続失敗:', e);
+    }
+
+    try {
+      const archHandle = await loadHandle(HANDLE_KEY_ARCHIVE);
+      if (archHandle) {
+        const perm = await archHandle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          const file = await archHandle.getFile();
+          const text = await file.text();
+          setArchiveFileHandle(archHandle);
+          setArchiveEntries(parseArchive(text));
+        }
+      }
+    } catch (e) {
+      console.warn('アーカイブファイル再接続失敗:', e);
+    }
+
+    if (anyConnected) setPendingReconnect(false);
+  }, [
+    setRawText,
+    setTodayFileHandle,
+    setArchiveFileHandle,
+    setArchiveEntries,
+    setSaveStatus,
+    setPendingReconnect,
+  ]);
+
+  /** 保存済みの本日ファイルハンドルをクリアする */
+  const clearStoredTodayHandle = useCallback(async () => {
+    await removeHandle(HANDLE_KEY_TODAY);
+    localStorage.removeItem(LS_KEY_TODAY_NAME);
+    setStoredTodayName(null);
+    setTodayFileHandle(null);
+    setSaveStatus('disconnected');
+  }, [setTodayFileHandle, setSaveStatus, setStoredTodayName]);
+
+  /** 保存済みのアーカイブファイルハンドルをクリアする */
+  const clearStoredArchiveHandle = useCallback(async () => {
+    await removeHandle(HANDLE_KEY_ARCHIVE);
+    localStorage.removeItem(LS_KEY_ARCHIVE_NAME);
+    setStoredArchiveName(null);
+    setArchiveFileHandle(null);
+  }, [setArchiveFileHandle, setStoredArchiveName]);
+
+  return {
+    openTodayFile,
+    openArchiveFile,
+    saveToday,
+    performDayCopy,
+    tryAutoReconnect,
+    reconnect,
+    clearStoredTodayHandle,
+    clearStoredArchiveHandle,
+  };
 }
 
