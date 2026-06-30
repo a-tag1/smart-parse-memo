@@ -11,6 +11,7 @@ export interface SubTask {
   done:      boolean;
   doneDate?: string;
   lineIndex: number;  // rawText 内の行番号 (0-based)
+  starred:   boolean; // テキスト先頭の ★ マーク
 }
 
 export interface Task {
@@ -22,6 +23,7 @@ export interface Task {
   subTasks:  SubTask[];
   lineIndex: number;   // rawText 内の行番号 (0-based)
   priority:  'high' | 'low'; // #### 優先度高/低 セクションによる分類
+  starred:   boolean;  // タイトル先頭の ★ マーク
 }
 
 export interface WorkSummaryEntry {
@@ -169,18 +171,24 @@ function extractTasks(lines: string[], lineIndices: number[]): Task[] {
       const todoSubMatch = doneSubMatch ? null : line.match(SUBTASK_TODO_RE);
 
       if (doneSubMatch) {
+        const rawSubText = doneSubMatch[3].trim();
+        const subStarred = rawSubText.startsWith('★');
         currentTask.subTasks.push({
-          text:      doneSubMatch[3].trim(),
+          text:      subStarred ? rawSubText.slice(1).trim() : rawSubText,
           done:      true,
           doneDate:  doneSubMatch[2],
           lineIndex: lineIdx,
+          starred:   subStarred,
         });
         continue;
       } else if (todoSubMatch) {
+        const rawSubText = todoSubMatch[2].trim();
+        const subStarred = rawSubText.startsWith('★');
         currentTask.subTasks.push({
-          text:      todoSubMatch[2].trim(),
+          text:      subStarred ? rawSubText.slice(1).trim() : rawSubText,
           done:      false,
           lineIndex: lineIdx,
+          starred:   subStarred,
         });
         continue;
       }
@@ -213,15 +221,19 @@ function extractTasks(lines: string[], lineIndices: number[]): Task[] {
       title   = body;
     }
 
+    const starred    = title.startsWith('\u2605');
+    const titleClean = starred ? title.slice(1).trim() : title;
+
     currentTask = {
       id,
-      title:     title || body,
+      title:     titleClean || body,
       project,
       status:    isDone ? 'done' : 'todo',
       doneDate,
       subTasks:  [],
       lineIndex: lineIdx,
       priority:  currentPriority,
+      starred,
     };
   }
 
@@ -292,7 +304,59 @@ export function completeAndMoveTask(rawText: string, task: Task): string {
   return lines.join('\n');
 }
 
+/**
+ * サブタスクの ★ マークをトグルし、更新後の rawText を返す。
+ *  starred=false → テキスト直前に ★ を挿入
+ *  starred=true  → テキスト直前の ★ を除去
+ */
+export function toggleSubTaskStar(rawText: string, subTask: SubTask): string {
+  const lines = rawText.split('\n');
+  const line  = lines[subTask.lineIndex];
+  if (line === undefined) return rawText;
+
+  if (subTask.starred) {
+    // ★ を削除（サブタスク行内の最初の ★ を除去）
+    lines[subTask.lineIndex] = line.replace('★', '');
+  } else {
+    // テキスト直前に ★ を挿入
+    const textIdx = line.indexOf(subTask.text);
+    if (textIdx === -1) return rawText;
+    lines[subTask.lineIndex] = line.slice(0, textIdx) + '★' + line.slice(textIdx);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * タスクの ★ マークをトグルし、更新後の rawText を返す。
+ *  starred=false → タイトル直前に ★ を挿入
+ *  starred=true  → タイトル直前の ★ を除去
+ */
+export function toggleTaskStar(rawText: string, task: Task): string {
+  const lines = rawText.split('\n');
+  const line  = lines[task.lineIndex];
+  if (line === undefined) return rawText;
+
+  if (task.starred) {
+    // ★ を削除（タスク行内の最初の ★ を除去）
+    lines[task.lineIndex] = line.replace('★', '');
+  } else {
+    // タイトルテキスト直前に ★ を挿入
+    const trimmedLine = line.trimStart();
+    const idMatch     = trimmedLine.match(TASK_ID_RE);
+    if (!idMatch) return rawText;
+    const indent     = line.length - trimmedLine.length;
+    const searchFrom = indent + idMatch[0].length;
+    const titleIdx   = line.indexOf(task.title, searchFrom);
+    if (titleIdx === -1) return rawText;
+    lines[task.lineIndex] = line.slice(0, titleIdx) + '★' + line.slice(titleIdx);
+  }
+
+  return lines.join('\n');
+}
+
 // ── 入力アシスト用ユーティリティ ─────────────────────────────
+
 export interface NextItemResult {
   prefix: string;  // 挿入すべき文字列（例: "6-24："）
 }

@@ -1,7 +1,7 @@
 ﻿import { useState, useCallback } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
-import { toggleSubTaskDone, completeAndMoveTask } from '../../lib/parserEngine';
+import { toggleSubTaskDone, completeAndMoveTask, toggleTaskStar, toggleSubTaskStar } from '../../lib/parserEngine';
 import type { Task, SubTask } from '../../lib/parserEngine';
 
 interface Props {
@@ -33,6 +33,26 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
     (subTask: SubTask) => {
       if (readonly) return;
       const next = toggleSubTaskDone(rawText, subTask);
+      setRawText(next);
+      saveToday(next);
+    },
+    [rawText, setRawText, saveToday, readonly],
+  );
+
+  const handleToggleStar = useCallback(
+    (task: Task) => {
+      if (readonly) return;
+      const next = toggleTaskStar(rawText, task);
+      setRawText(next);
+      saveToday(next);
+    },
+    [rawText, setRawText, saveToday, readonly],
+  );
+
+  const handleToggleSubTaskStar = useCallback(
+    (subTask: SubTask) => {
+      if (readonly) return;
+      const next = toggleSubTaskStar(rawText, subTask);
       setRawText(next);
       saveToday(next);
     },
@@ -85,6 +105,8 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                   readonly={readonly}
                   onComplete={handleCompleteTask}
                   onToggleSubTask={handleToggleSubTask}
+                  onToggleStar={handleToggleStar}
+                  onToggleSubTaskStar={handleToggleSubTaskStar}
                 />
               ))}
             </div>
@@ -107,6 +129,8 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                         readonly={readonly}
                         onComplete={handleCompleteTask}
                         onToggleSubTask={handleToggleSubTask}
+                        onToggleStar={handleToggleStar}
+                        onToggleSubTaskStar={handleToggleSubTaskStar}
                       />
                     ))}
                   </div>
@@ -137,6 +161,8 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                   faded
                   onComplete={handleCompleteTask}
                   onToggleSubTask={handleToggleSubTask}
+                  onToggleStar={handleToggleStar}
+                  onToggleSubTaskStar={handleToggleSubTaskStar}
                 />
               ))}
             </div>
@@ -148,14 +174,16 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
 }
 
 interface TaskRowProps {
-  task:            Task;
-  readonly:        boolean;
-  faded?:          boolean;
-  onComplete:      (task: Task) => void;
-  onToggleSubTask: (sub: SubTask) => void;
+  task:               Task;
+  readonly:           boolean;
+  faded?:             boolean;
+  onComplete:         (task: Task) => void;
+  onToggleSubTask:    (sub: SubTask) => void;
+  onToggleStar:       (task: Task) => void;
+  onToggleSubTaskStar:(sub: SubTask) => void;
 }
 
-function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }: TaskRowProps) {
+function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar }: TaskRowProps) {
   const isDone = task.status === 'done';
   const [subtasksOpen, setSubtasksOpen] = useState(false);
 
@@ -186,12 +214,30 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }:
           {task.project && (
             <span className="text-xs text-blue-400 mr-1">{task.project}:</span>
           )}
-          <span className={`text-sm ${isDone ? 'line-through text-gray-600' : 'text-gray-200'}`}>
+          <span className={`text-sm ${
+            isDone           ? 'line-through text-gray-600' :
+            task.starred     ? 'text-amber-200 font-semibold' :
+                               'text-gray-200'
+          }`}>
             {task.title}
           </span>
           {task.doneDate && (
             <span className="text-xs text-gray-600 ml-1">({task.doneDate})</span>
           )}
+          {/* ★ トグルボタン */}
+          <button
+            type="button"
+            disabled={readonly}
+            onClick={() => onToggleStar(task)}
+            title={task.starred ? '★を解除' : '★をつける'}
+            className={`ml-1 text-sm leading-none transition-colors ${
+              task.starred
+                ? 'text-amber-400' + (readonly ? '' : ' hover:text-amber-300 cursor-pointer')
+                : 'text-gray-700'  + (readonly ? '' : ' hover:text-amber-400 cursor-pointer')
+            }`}
+          >
+            {task.starred ? '★' : '☆'}
+          </button>
           {task.subTasks.length > 0 && (
             <button
               type="button"
@@ -229,7 +275,7 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }:
                 )}
               </button>
               {(() => {
-                const isHighlight = sub.text.startsWith('★');
+                const isHighlight = sub.starred;
                 if (isHighlight) {
                   return (
                     <span className={`text-sm font-bold px-1 rounded ${sub.done ? 'line-through text-blue-800 bg-blue-950' : 'text-blue-200 bg-blue-900'}`}>
@@ -245,6 +291,20 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }:
                   </span>
                 );
               })()}
+              {/* サブタスク ★ トグル */}
+              <button
+                type="button"
+                disabled={readonly}
+                onClick={() => onToggleSubTaskStar(sub)}
+                title={sub.starred ? '★を解除' : '★をつける'}
+                className={`text-xs leading-none transition-colors ${
+                  sub.starred
+                    ? 'text-blue-400'  + (readonly ? '' : ' hover:text-blue-300 cursor-pointer')
+                    : 'text-gray-700' + (readonly ? '' : ' hover:text-blue-400 cursor-pointer')
+                }`}
+              >
+                {sub.starred ? '★' : '☆'}
+              </button>
             </div>
           ))}
         </div>
