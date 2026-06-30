@@ -6,8 +6,10 @@ const DB_VERSION = 1;
 
 export const HANDLE_KEY_TODAY    = 'today';
 export const HANDLE_KEY_ARCHIVE  = 'archive';
+export const HANDLE_KEY_MEMO     = 'memo';
 export const LS_KEY_TODAY_NAME   = 'spm_today_name';
 export const LS_KEY_ARCHIVE_NAME = 'spm_archive_name';
+export const LS_KEY_MEMO_NAME    = 'spm_memo_name';
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

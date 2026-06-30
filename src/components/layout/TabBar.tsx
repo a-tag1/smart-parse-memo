@@ -21,6 +21,11 @@ export function TabBar() {
           active={activeTab === 'archive'}
           onClick={() => setActiveTab('archive')}
         />
+        <TabButton
+          label="メモ"
+          active={activeTab === 'memo'}
+          onClick={() => setActiveTab('memo')}
+        />
       </div>
 
       {/* 前日コピーボタン（本日タブ＋ファイル接続時のみ表示） */}

@@ -8,12 +8,14 @@ export function Header() {
   const activeTab         = useAppStore((s) => s.activeTab);
   const todayFileHandle   = useAppStore((s) => s.todayFileHandle);
   const archiveFileHandle = useAppStore((s) => s.archiveFileHandle);
+  const memoFileHandle    = useAppStore((s) => s.memoFileHandle);
   const saveStatus        = useAppStore((s) => s.saveStatus);
   const pendingReconnect  = useAppStore((s) => s.pendingReconnect);
   const storedTodayName   = useAppStore((s) => s.storedTodayName);
   const storedArchiveName = useAppStore((s) => s.storedArchiveName);
+  const storedMemoName    = useAppStore((s) => s.storedMemoName);
 
-  const { openTodayFile, openArchiveFile, tryAutoReconnect, reconnect } = useFileAccess();
+  const { openTodayFile, openArchiveFile, openMemoFile, tryAutoReconnect, reconnect } = useFileAccess();
   const [showSettings, setShowSettings] = useState(false);
 
   // マウント時に1回だけ自動復元を試みる
@@ -27,10 +29,16 @@ export function Header() {
   const currentFileName =
     activeTab === 'today'
       ? (todayFileHandle?.name ?? storedTodayName ?? 'ファイル未接続')
-      : (archiveFileHandle?.name ?? storedArchiveName ?? 'アーカイブ未接続');
+      : activeTab === 'archive'
+      ? (archiveFileHandle?.name ?? storedArchiveName ?? 'アーカイブ未接続')
+      : (memoFileHandle?.name ?? storedMemoName ?? 'メモファイル未接続');
 
-  const isConnected = activeTab === 'today' ? !!todayFileHandle : !!archiveFileHandle;
-  const handleOpen  = activeTab === 'today' ? openTodayFile : openArchiveFile;
+  const isConnected = activeTab === 'today' ? !!todayFileHandle
+                    : activeTab === 'archive' ? !!archiveFileHandle
+                    : !!memoFileHandle;
+  const handleOpen  = activeTab === 'today' ? openTodayFile
+                    : activeTab === 'archive' ? openArchiveFile
+                    : openMemoFile;
 
   return (
     <>

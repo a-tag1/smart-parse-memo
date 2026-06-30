@@ -9,11 +9,14 @@ interface Props {
 export function SettingsModal({ onClose }: Props) {
   const storedTodayName   = useAppStore((s) => s.storedTodayName);
   const storedArchiveName = useAppStore((s) => s.storedArchiveName);
+  const storedMemoName    = useAppStore((s) => s.storedMemoName);
   const {
     openTodayFile,
     openArchiveFile,
+    openMemoFile,
     clearStoredTodayHandle,
     clearStoredArchiveHandle,
+    clearStoredMemoHandle,
   } = useFileAccess();
 
   return (
@@ -53,6 +56,14 @@ export function SettingsModal({ onClose }: Props) {
           name={storedArchiveName}
           onOpen={openArchiveFile}
           onClear={clearStoredArchiveHandle}
+        />
+
+        {/* メモファイル */}
+        <FileRow
+          label="メモファイル"
+          name={storedMemoName}
+          onOpen={openMemoFile}
+          onClear={clearStoredMemoHandle}
         />
 
         {/* 注記 */}

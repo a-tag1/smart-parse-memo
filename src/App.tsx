@@ -2,6 +2,7 @@ import { Header } from './components/layout/Header';
 import { TabBar } from './components/layout/TabBar';
 import { TextEditor } from './components/editor/TextEditor';
 import { ArchiveView } from './components/editor/ArchiveView';
+import { MemoEditor } from './components/editor/MemoEditor';
 import { InsightPanel } from './components/dashboard/InsightPanel';
 import { useParser } from './hooks/useParser';
 import { useAppStore } from './store/appStore';
@@ -16,14 +17,22 @@ function App() {
       <Header />
       <TabBar />
       <div className="flex flex-1 overflow-hidden">
-        {/* 左ペイン：本日=エディタ / 過去=アーカイブビュー */}
-        <div className="w-1/2 border-r border-gray-800 flex flex-col overflow-hidden">
-          {activeTab === 'today' ? <TextEditor /> : <ArchiveView />}
-        </div>
-        {/* 右ペイン：インサイト */}
-        <div className="w-1/2 flex flex-col overflow-hidden">
-          <InsightPanel />
-        </div>
+        {activeTab === 'memo' ? (
+          <div className="flex-1 overflow-hidden">
+            <MemoEditor />
+          </div>
+        ) : (
+          <>
+            {/* 左ペイン：本日=エディタ / 過去=アーカイブビュー */}
+            <div className="w-1/2 border-r border-gray-800 flex flex-col overflow-hidden">
+              {activeTab === 'today' ? <TextEditor /> : <ArchiveView />}
+            </div>
+            {/* 右ペイン：インサイト */}
+            <div className="w-1/2 flex flex-col overflow-hidden">
+              <InsightPanel />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

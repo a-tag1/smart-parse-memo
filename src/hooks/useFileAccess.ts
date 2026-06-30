@@ -15,8 +15,10 @@ import {
   removeHandle,
   HANDLE_KEY_TODAY,
   HANDLE_KEY_ARCHIVE,
+  HANDLE_KEY_MEMO,
   LS_KEY_TODAY_NAME,
   LS_KEY_ARCHIVE_NAME,
+  LS_KEY_MEMO_NAME,
 } from '../lib/fileHandleStorage';
 
 export function useFileAccess() {
@@ -31,6 +33,11 @@ export function useFileAccess() {
   const todayFileHandle       = useAppStore((s) => s.todayFileHandle);
   const archiveFileHandle     = useAppStore((s) => s.archiveFileHandle);
   const rawText               = useAppStore((s) => s.rawText);
+  const memoFileHandle        = useAppStore((s) => s.memoFileHandle);
+  const setMemoFileHandle     = useAppStore((s) => s.setMemoFileHandle);
+  const setMemoText           = useAppStore((s) => s.setMemoText);
+  const setStoredMemoName     = useAppStore((s) => s.setStoredMemoName);
+  const setMemoSaveStatus     = useAppStore((s) => s.setMemoSaveStatus);
 
   /** daily_today.txt を開く。日付不一致の場合は通知を出す */
   const openTodayFile = useCallback(async () => {
@@ -88,6 +95,47 @@ export function useFileAccess() {
       }
     }
   }, [setArchiveFileHandle, setArchiveEntries, setStoredArchiveName]);
+
+  /** memo_archive.txt を開く */
+  const openMemoFile = useCallback(async () => {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'メモ（テキスト）', accept: { 'text/plain': ['.txt'] } }],
+        multiple: false,
+      });
+      const file = await handle.getFile();
+      const text = await file.text();
+      setMemoFileHandle(handle);
+      setMemoText(text);
+      setMemoSaveStatus('saved');
+      await saveHandle(HANDLE_KEY_MEMO, handle);
+      localStorage.setItem(LS_KEY_MEMO_NAME, handle.name);
+      setStoredMemoName(handle.name);
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        console.error('メモファイルを開けませんでした:', err);
+      }
+    }
+  }, [setMemoFileHandle, setMemoText, setMemoSaveStatus, setStoredMemoName]);
+
+  /** memo_archive.txt に保存する */
+  const saveMemo = useCallback(
+    async (text: string) => {
+      if (!memoFileHandle) return;
+      setMemoSaveStatus('saving');
+      try {
+        const writable = await memoFileHandle.createWritable();
+        await writable.write(text);
+        await writable.close();
+        setMemoText(text);           // ハイライト・セクションナビを保存済み内容に屏止
+        setMemoSaveStatus('saved');
+      } catch (err) {
+        console.error('メモ保存に失敗しました:', err);
+        setMemoSaveStatus('disconnected');
+      }
+    },
+    [memoFileHandle, setMemoSaveStatus, setMemoText],
+  );
 
   /** daily_today.txt にデバウンス保存する */
   const saveToday = useCallback(
@@ -224,6 +272,24 @@ export function useFileAccess() {
       console.warn('アーカイブハンドル復元失敗:', e);
     }
 
+    try {
+      const memoHandle = await loadHandle(HANDLE_KEY_MEMO);
+      if (memoHandle) {
+        const perm = await memoHandle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          const file = await memoHandle.getFile();
+          const text = await file.text();
+          setMemoFileHandle(memoHandle);
+          setMemoText(text);
+          setMemoSaveStatus('saved');
+        } else {
+          hasPending = true;
+        }
+      }
+    } catch (e) {
+      console.warn('メモハンドル復元失敗:', e);
+    }
+
     setPendingReconnect(hasPending);
   }, [
     setRawText,
@@ -232,6 +298,9 @@ export function useFileAccess() {
     setArchiveEntries,
     setSaveStatus,
     setPendingReconnect,
+    setMemoFileHandle,
+    setMemoText,
+    setMemoSaveStatus,
   ]);
 
   /**
@@ -273,6 +342,22 @@ export function useFileAccess() {
       console.warn('アーカイブファイル再接続失敗:', e);
     }
 
+    try {
+      const memoHandle = await loadHandle(HANDLE_KEY_MEMO);
+      if (memoHandle) {
+        const perm = await memoHandle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          const file = await memoHandle.getFile();
+          const text = await file.text();
+          setMemoFileHandle(memoHandle);
+          setMemoText(text);
+          setMemoSaveStatus('saved');
+        }
+      }
+    } catch (e) {
+      console.warn('メモファイル再接続失敗:', e);
+    }
+
     if (anyConnected) setPendingReconnect(false);
   }, [
     setRawText,
@@ -281,6 +366,9 @@ export function useFileAccess() {
     setArchiveEntries,
     setSaveStatus,
     setPendingReconnect,
+    setMemoFileHandle,
+    setMemoText,
+    setMemoSaveStatus,
   ]);
 
   /** 保存済みの本日ファイルハンドルをクリアする */
@@ -300,15 +388,27 @@ export function useFileAccess() {
     setArchiveFileHandle(null);
   }, [setArchiveFileHandle, setStoredArchiveName]);
 
+  /** 保存済みのメモファイルハンドルをクリアする */
+  const clearStoredMemoHandle = useCallback(async () => {
+    await removeHandle(HANDLE_KEY_MEMO);
+    localStorage.removeItem(LS_KEY_MEMO_NAME);
+    setStoredMemoName(null);
+    setMemoFileHandle(null);
+    setMemoSaveStatus('disconnected');
+  }, [setMemoFileHandle, setMemoSaveStatus, setStoredMemoName]);
+
   return {
     openTodayFile,
     openArchiveFile,
+    openMemoFile,
     saveToday,
+    saveMemo,
     performDayCopy,
     tryAutoReconnect,
     reconnect,
     clearStoredTodayHandle,
     clearStoredArchiveHandle,
+    clearStoredMemoHandle,
   };
 }
 

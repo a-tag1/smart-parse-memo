@@ -3,7 +3,7 @@ import type { ParsedData } from '../lib/parserEngine';
 import type { ArchiveEntry } from '../lib/archiveEngine';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'disconnected';
-export type ActiveTab  = 'today' | 'archive';
+export type ActiveTab  = 'today' | 'archive' | 'memo';
 
 interface AppState {
   activeTab:            ActiveTab;
@@ -17,6 +17,10 @@ interface AppState {
   storedTodayName:      string | null;
   storedArchiveName:    string | null;
   pendingReconnect:     boolean;
+  memoFileHandle:       FileSystemFileHandle | null;
+  memoText:             string;
+  storedMemoName:       string | null;
+  memoSaveStatus:       SaveStatus;
 
   setActiveTab:           (tab: ActiveTab) => void;
   setRawText:             (text: string) => void;
@@ -29,6 +33,10 @@ interface AppState {
   setStoredTodayName:     (name: string | null) => void;
   setStoredArchiveName:   (name: string | null) => void;
   setPendingReconnect:    (v: boolean) => void;
+  setMemoFileHandle:      (handle: FileSystemFileHandle | null) => void;
+  setMemoText:            (text: string) => void;
+  setStoredMemoName:      (name: string | null) => void;
+  setMemoSaveStatus:      (status: SaveStatus) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -43,6 +51,10 @@ export const useAppStore = create<AppState>((set) => ({
   storedTodayName:      localStorage.getItem('spm_today_name'),
   storedArchiveName:    localStorage.getItem('spm_archive_name'),
   pendingReconnect:     false,
+  memoFileHandle:       null,
+  memoText:             '',
+  storedMemoName:       localStorage.getItem('spm_memo_name'),
+  memoSaveStatus:       'disconnected' as SaveStatus,
 
   setActiveTab:           (activeTab)           => set({ activeTab }),
   setRawText:             (rawText)             => set({ rawText }),
@@ -55,4 +67,8 @@ export const useAppStore = create<AppState>((set) => ({
   setStoredTodayName:     (storedTodayName)     => set({ storedTodayName }),
   setStoredArchiveName:   (storedArchiveName)   => set({ storedArchiveName }),
   setPendingReconnect:    (pendingReconnect)    => set({ pendingReconnect }),
+  setMemoFileHandle:      (memoFileHandle)      => set({ memoFileHandle }),
+  setMemoText:            (memoText)            => set({ memoText }),
+  setStoredMemoName:      (storedMemoName)      => set({ storedMemoName }),
+  setMemoSaveStatus:      (memoSaveStatus)      => set({ memoSaveStatus }),
 }));
