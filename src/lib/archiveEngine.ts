@@ -51,7 +51,7 @@ export function extractTasksSection(rawText: string): string {
     if (/###\s*[３3]\s*[．.]?\s*タスク/.test(trimmed)) {
       inTasks = true;
       continue;
-    } else if (/^###/.test(trimmed) && inTasks) {
+    } else if (/^###(?!#)/.test(trimmed) && inTasks) {
       break;
     }
     if (inTasks) taskLines.push(line);
@@ -74,7 +74,7 @@ export function extractCompletedTasksSection(rawText: string): string {
     if (/###\s*[４4][\．.]?\s*当月完了タスク/.test(trimmed)) {
       inSection = true;
       continue;
-    } else if (/^###/.test(trimmed) && inSection) {
+    } else if (/^###(?!#)/.test(trimmed) && inSection) {
       break;
     }
     if (inSection) sectionLines.push(line);
