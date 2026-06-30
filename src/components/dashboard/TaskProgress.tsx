@@ -157,6 +157,7 @@ interface TaskRowProps {
 
 function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }: TaskRowProps) {
   const isDone = task.status === 'done';
+  const [subtasksOpen, setSubtasksOpen] = useState(false);
 
   return (
     <div className={faded ? 'opacity-60' : ''}>
@@ -191,10 +192,20 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask }:
           {task.doneDate && (
             <span className="text-xs text-gray-600 ml-1">({task.doneDate})</span>
           )}
+          {task.subTasks.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSubtasksOpen((v) => !v)}
+              className="ml-1.5 text-[10px] text-gray-600 hover:text-gray-400 inline-flex items-center gap-0.5 transition-colors"
+            >
+              <span>{subtasksOpen ? '▼' : '▶'}</span>
+              <span>{task.subTasks.length}件</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {task.subTasks.length > 0 && (
+      {task.subTasks.length > 0 && subtasksOpen && (
         <div className="ml-5 mt-0.5 space-y-0.5">
           {task.subTasks.map((sub, i) => (
             <div key={i} className="flex items-center gap-1.5">
