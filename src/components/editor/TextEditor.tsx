@@ -14,6 +14,7 @@ export function TextEditor() {
 
   const textareaRef    = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const highlightRef   = useRef<HTMLDivElement>(null);
   const rawTextRef     = useRef(rawText);
   rawTextRef.current   = rawText;
 
@@ -21,6 +22,9 @@ export function TextEditor() {
   const syncScroll = useCallback(() => {
     if (textareaRef.current && lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+    if (textareaRef.current && highlightRef.current) {
+      highlightRef.current.scrollTop = textareaRef.current.scrollTop;
     }
   }, []);
 
@@ -86,25 +90,54 @@ export function TextEditor() {
         ))}
       </div>
 
-      {/* テキストエリア */}
-      <textarea
-        ref={textareaRef}
-        value={rawText}
-        onChange={handleChange}
-        onKeyDown={(e) => {
-          handleKeyDown(e);
-          handleKeyDownTab(e);
-        }}
-        onScroll={syncScroll}
-        spellCheck={false}
-        className="flex-1 bg-transparent text-gray-200 px-4 py-4 resize-none outline-none
-                   leading-6 overflow-auto caret-blue-400"
-        placeholder={
-          todayFileHandle
-            ? ''
-            : 'ファイルを開いて編集を開始してください...\n\nヒント: Shift+Enter で次の項番を自動挿入します'
-        }
-      />
+      {/* エディタ（ハイライトレイヤー + テキストエリア） */}
+      <div className="relative flex-1 overflow-hidden">
+        {/* ハイライトレイヤー（背面） */}
+        <div
+          ref={highlightRef}
+          aria-hidden
+          className="absolute inset-0 px-4 py-4 leading-6 overflow-hidden pointer-events-none
+                     select-none whitespace-pre-wrap break-all"
+        >
+          {lines.map((line, i) => {
+            const trimmed = line.trimStart();
+            const isH3 = /^###(?!#)/.test(trimmed);
+            const isH4 = /^####/.test(trimmed);
+            return (
+              <div
+                key={i}
+                className={`leading-6 ${
+                  isH3 ? 'text-emerald-300 font-bold' :
+                  isH4 ? 'text-yellow-400 font-semibold' :
+                         'text-gray-200'
+                }`}
+              >
+                {line || '\u00a0'}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* テキストエリア（文字は透明にしてキャレットのみ表示） */}
+        <textarea
+          ref={textareaRef}
+          value={rawText}
+          onChange={handleChange}
+          onKeyDown={(e) => {
+            handleKeyDown(e);
+            handleKeyDownTab(e);
+          }}
+          onScroll={syncScroll}
+          spellCheck={false}
+          className="absolute inset-0 w-full h-full bg-transparent text-transparent
+                     caret-blue-400 px-4 py-4 resize-none outline-none leading-6 overflow-auto"
+          placeholder={
+            todayFileHandle
+              ? ''
+              : 'ファイルを開いて編集を開始してください...\n\nヒント: Shift+Enter で次の項番を自動挿入します'
+          }
+        />
+      </div>
     </div>
   );
 }
