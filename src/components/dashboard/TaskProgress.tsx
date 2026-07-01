@@ -185,7 +185,7 @@ interface TaskRowProps {
 
 function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar }: TaskRowProps) {
   const isDone = task.status === 'done';
-  const [subtasksOpen, setSubtasksOpen] = useState(false);
+  const [subtasksOpen, setSubtasksOpen] = useState(task.starred);
 
   return (
     <div className={faded ? 'opacity-60' : ''}>
