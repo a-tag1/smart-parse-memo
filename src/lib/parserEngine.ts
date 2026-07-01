@@ -362,20 +362,26 @@ export interface NextItemResult {
 }
 
 export function calcNextItem(rawText: string): NextItemResult {
-  const pattern = /(\d+)-(\d+)(?:_[A-Za-z]+)?\s*[\uff1a:]/g;
+  const pattern      = /(?<!:)(\d+)-(\d+)(?:_[A-Za-z]+)?\s*[\uff1a:]/g;
   let match: RegExpExecArray | null;
-  let maxSecond = -1;
-  let firstNum  = `${new Date().getMonth() + 1}`;
+  const currentMonth = new Date().getMonth() + 1;
+  let bestSecond     = -1;
+  let bestAge        = Infinity;
+  let firstNum       = `${currentMonth}`;
 
   while ((match = pattern.exec(rawText)) !== null) {
+    const first  = parseInt(match[1], 10);
     const second = parseInt(match[2], 10);
-    if (second > maxSecond) {
-      maxSecond = second;
-      firstNum  = match[1];
+    // 現在月からの経過月数（0=当月, 1=先月, ... 11=11ヶ月前）で新しさを判定
+    const age = (currentMonth - first + 12) % 12;
+    if (age < bestAge || (age === bestAge && second > bestSecond)) {
+      bestAge    = age;
+      bestSecond = second;
+      firstNum   = match[1];
     }
   }
 
-  const next = maxSecond >= 0 ? maxSecond + 1 : 1;
+  const next = bestSecond >= 0 ? bestSecond + 1 : 1;
   return { prefix: `${firstNum}-${next}： ` };
 }
 
