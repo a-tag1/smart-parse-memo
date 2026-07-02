@@ -20,6 +20,7 @@ export interface Task {
   project:   string;   // 明示指定がある場合のみ。なければ空文字
   status:    'todo' | 'done';
   doneDate?: string;
+  deadline?: string;   // タイトル末尾の [M/D] 期限
   subTasks:  SubTask[];
   lineIndex: number;   // rawText 内の行番号 (0-based)
   priority:  'high' | 'low'; // #### 優先度高/低 セクションによる分類
@@ -143,6 +144,8 @@ const SUBTASK_DONE_RE = /^(\s+)済\((\d+\/\d+)\)\s*[・•]\s*(.*)/;
 const SUBTASK_TODO_RE = /^(\s+)[・•]\s*(.*)/;
 const PRIORITY_HIGH_RE = /^####\s*優先度高/;
 const PRIORITY_LOW_RE  = /^####\s*優先度低/;
+/** タイトル末尾の期限マーク [M/D]。[目安：...] とは区別するため数字のみ許可 */
+const DEADLINE_RE      = /\s*\[(\d{1,2}\/\d{1,2})\]\s*$/;
 
 function extractTasks(lines: string[], lineIndices: number[]): Task[] {
   const results: Task[]  = [];
@@ -224,12 +227,17 @@ function extractTasks(lines: string[], lineIndices: number[]): Task[] {
     const starred    = title.startsWith('\u2605');
     const titleClean = starred ? title.slice(1).trim() : title;
 
+    const deadlineMatch = titleClean.match(DEADLINE_RE);
+    const deadline      = deadlineMatch?.[1];
+    const titleFinal    = deadlineMatch ? titleClean.replace(DEADLINE_RE, '').trim() : titleClean;
+
     currentTask = {
       id,
-      title:     titleClean || body,
+      title:     titleFinal || body,
       project,
       status:    isDone ? 'done' : 'todo',
       doneDate,
+      deadline,
       subTasks:  [],
       lineIndex: lineIdx,
       priority:  currentPriority,

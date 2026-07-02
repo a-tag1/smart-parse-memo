@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { TimelineChart } from './TimelineChart';
 import { TaskProgress } from './TaskProgress';
+import { TaskDeadline } from './TaskDeadline';
 import { WorkSummary } from './WorkSummary';
 import { timeToMinutes, minutesToHHMM } from '../../lib/parserEngine';
 import type { Schedule } from '../../lib/parserEngine';
 
-type PanelTab = 'task' | 'summary' | 'timeline';
+type PanelTab = 'task' | 'deadline' | 'summary' | 'timeline';
 
 function calcTotalMinutes(schedules: Schedule[]): number {
   return schedules.reduce((sum, s) => {
@@ -17,6 +18,7 @@ function calcTotalMinutes(schedules: Schedule[]): number {
 
 const TABS: { id: PanelTab; label: string }[] = [
   { id: 'task',     label: 'タスク進捗' },
+  { id: 'deadline', label: 'タスク期限' },
   { id: 'summary',  label: '稼働サマリー' },
   { id: 'timeline', label: 'タイムライン' },
 ];
@@ -75,6 +77,9 @@ export function InsightPanel() {
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'task' && (
           <TaskProgress tasks={tasks} completedTasks={completedTasks} />
+        )}
+        {activeTab === 'deadline' && (
+          <TaskDeadline tasks={tasks} />
         )}
         {activeTab === 'summary' && (
           <WorkSummary entries={workSummary} />
