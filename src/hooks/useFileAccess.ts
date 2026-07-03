@@ -48,7 +48,7 @@ export function useFileAccess() {
       });
 
       const file  = await handle.getFile();
-      const text  = await file.text();
+      const text  = (await file.text()).replace(/\r\n/g, '\n');
       const today = getTodayDate();
       const fileDate = extractDateFromText(text);
 
@@ -104,7 +104,7 @@ export function useFileAccess() {
         multiple: false,
       });
       const file = await handle.getFile();
-      const text = await file.text();
+      const text = (await file.text()).replace(/\r\n/g, '\n');
       setMemoFileHandle(handle);
       setMemoText(text);
       setMemoSaveStatus('saved');
@@ -243,7 +243,7 @@ export function useFileAccess() {
         const perm = await todayHandle.queryPermission({ mode: 'readwrite' });
         if (perm === 'granted') {
           const file = await todayHandle.getFile();
-          const text = await file.text();
+          const text = (await file.text()).replace(/\r\n/g, '\n');
           setTodayFileHandle(todayHandle);
           setRawText(text);
           setSaveStatus('saved');
@@ -278,7 +278,7 @@ export function useFileAccess() {
         const perm = await memoHandle.queryPermission({ mode: 'readwrite' });
         if (perm === 'granted') {
           const file = await memoHandle.getFile();
-          const text = await file.text();
+          const text = (await file.text()).replace(/\r\n/g, '\n');
           setMemoFileHandle(memoHandle);
           setMemoText(text);
           setMemoSaveStatus('saved');
@@ -316,7 +316,7 @@ export function useFileAccess() {
         const perm = await todayHandle.requestPermission({ mode: 'readwrite' });
         if (perm === 'granted') {
           const file = await todayHandle.getFile();
-          const text = await file.text();
+          const text = (await file.text()).replace(/\r\n/g, '\n');
           setTodayFileHandle(todayHandle);
           setRawText(text);
           setSaveStatus('saved');
@@ -348,7 +348,7 @@ export function useFileAccess() {
         const perm = await memoHandle.requestPermission({ mode: 'readwrite' });
         if (perm === 'granted') {
           const file = await memoHandle.getFile();
-          const text = await file.text();
+          const text = (await file.text()).replace(/\r\n/g, '\n');
           setMemoFileHandle(memoHandle);
           setMemoText(text);
           setMemoSaveStatus('saved');

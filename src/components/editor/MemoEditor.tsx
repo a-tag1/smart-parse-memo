@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect, useDeferredValue } from 'react';
+import { useRef, useCallback, useState, useEffect, useDeferredValue, useLayoutEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 
@@ -24,15 +24,17 @@ export function MemoEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setLocalText(memoText); }, [memoFileHandle]);
 
-  // ハイライト層・セクションナビ用（非ブロッキング遅延更新でラグ回避）
-  const deferredText = useDeferredValue(localText);
-  const displayLines = deferredText.split('\n');
+  // ハイライト層はカーソルと常に同期させるため localText を直接使用
+  const displayLines = localText.split('\n');
+  // セクションナビはやや遅延してもよいので deferredValue で描画負荷を軽減
+  const deferredText  = useDeferredValue(localText);
+  const deferredLines = deferredText.split('\n');
 
   const [newSectionName, setNewSectionName] = useState('');
   const [showAddSection, setShowAddSection] = useState(false);
 
   const sections: { name: string; lineIndex: number }[] = [];
-  displayLines.forEach((line, i) => {
+  deferredLines.forEach((line, i) => {
     const m = line.trim().match(SECTION_RE);
     if (m) sections.push({ name: m[1], lineIndex: i });
   });
@@ -43,6 +45,14 @@ export function MemoEditor() {
       highlightRef.current.scrollTop = textareaRef.current.scrollTop;
     }
   }, []);
+
+  // スクロールバー幅の同期
+  useLayoutEffect(() => {
+    const ta = textareaRef.current;
+    const hl = highlightRef.current;
+    if (!ta || !hl) return;
+    hl.style.paddingRight = `${ta.offsetWidth - ta.clientWidth + 16}px`; // 16 = px-4
+  });
 
   /** テキスト変更（ローカルstateのみ更新。storeは保存時に更新） */
   const handleChange = useCallback(
@@ -65,7 +75,8 @@ export function MemoEditor() {
         const ta    = e.currentTarget;
         const start = ta.selectionStart;
         const end   = ta.selectionEnd;
-        const newText = localTextRef.current.slice(0, start) + '  ' + localTextRef.current.slice(end);
+        // ta.value はブラウザが LF 正規化済みのため位置ズレが起きない
+        const newText = ta.value.slice(0, start) + '  ' + ta.value.slice(end);
         setLocalText(newText);
         requestAnimationFrame(() => {
           ta.selectionStart = start + 2;
@@ -207,6 +218,7 @@ export function MemoEditor() {
             aria-hidden
             className="absolute inset-0 px-4 py-4 leading-6 overflow-hidden pointer-events-none
                        select-none whitespace-pre-wrap break-all"
+            style={{ paddingRight: 16 }}  // useLayoutEffect で上書きされる
           >
             {displayLines.map((line, i) => {
               const isSection = SECTION_RE.test(line.trim());
@@ -231,7 +243,8 @@ export function MemoEditor() {
             spellCheck={false}
             placeholder={'メモを入力...\n\n==== セクション名 ==== でセクションを作成できます'}
             className="absolute inset-0 w-full h-full bg-transparent text-transparent
-                       caret-blue-400 px-4 py-4 resize-none outline-none leading-6 overflow-auto"
+                       caret-blue-400 px-4 py-4 resize-none outline-none leading-6 overflow-auto
+                       break-all [scrollbar-gutter:stable]"
           />
         </div>
       )}

@@ -1,4 +1,4 @@
-﻿import { useRef, useCallback } from 'react';
+﻿import { useRef, useCallback, useLayoutEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 import { useShortcuts } from '../../hooks/useShortcuts';
@@ -27,6 +27,16 @@ export function TextEditor() {
       highlightRef.current.scrollTop = textareaRef.current.scrollTop;
     }
   }, []);
+
+  // スクロールバー幅の同期
+  // textarea にスクロールバーが出るとコンテンツ幅が縮小し、ハイライト層と折り返し位置がズレる。
+  // レンダリング後に scrollbarWidth を測定して highlight の paddingRight を補正する。
+  useLayoutEffect(() => {
+    const ta = textareaRef.current;
+    const hl = highlightRef.current;
+    if (!ta || !hl) return;
+    hl.style.paddingRight = `${ta.offsetWidth - ta.clientWidth + 16}px`; // 16 = px-4
+  });
 
   // テキスト変更
   const handleChange = useCallback(
@@ -61,7 +71,8 @@ export function TextEditor() {
         const ta    = e.currentTarget;
         const start = ta.selectionStart;
         const end   = ta.selectionEnd;
-        const newText = rawText.slice(0, start) + '  ' + rawText.slice(end);
+        // ta.value はブラウザが LF 正規化済みのため位置ズレが起きない
+        const newText = ta.value.slice(0, start) + '  ' + ta.value.slice(end);
         setRawText(newText);
         requestAnimationFrame(() => {
           ta.selectionStart = start + 2;
@@ -69,7 +80,7 @@ export function TextEditor() {
         });
       }
     },
-    [rawText, setRawText],
+    [setRawText],
   );
 
   const lines = rawText.split('\n');
@@ -98,6 +109,7 @@ export function TextEditor() {
           aria-hidden
           className="absolute inset-0 px-4 py-4 leading-6 overflow-hidden pointer-events-none
                      select-none whitespace-pre-wrap break-all"
+          style={{ paddingRight: 16 }}  // useLayoutEffect で上書きされる
         >
           {lines.map((line, i) => {
             const trimmed = line.trimStart();
@@ -130,7 +142,8 @@ export function TextEditor() {
           onScroll={syncScroll}
           spellCheck={false}
           className="absolute inset-0 w-full h-full bg-transparent text-transparent
-                     caret-blue-400 px-4 py-4 resize-none outline-none leading-6 overflow-auto"
+                     caret-blue-400 px-4 py-4 resize-none outline-none leading-6 overflow-auto
+                     break-all [scrollbar-gutter:stable]"
           placeholder={
             todayFileHandle
               ? ''
