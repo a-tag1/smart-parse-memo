@@ -1,4 +1,4 @@
-﻿import { useRef, useCallback, useLayoutEffect } from 'react';
+﻿import { useRef, useCallback, useLayoutEffect, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 import { useShortcuts } from '../../hooks/useShortcuts';
@@ -8,6 +8,8 @@ export function TextEditor() {
   const setRawText      = useAppStore((s) => s.setRawText);
   const setSaveStatus   = useAppStore((s) => s.setSaveStatus);
   const todayFileHandle = useAppStore((s) => s.todayFileHandle);
+  const focusLineIndex    = useAppStore((s) => s.focusLineIndex);
+  const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
 
   const { saveToday }        = useFileAccess();
   const { handleShiftEnter } = useShortcuts();
@@ -17,6 +19,23 @@ export function TextEditor() {
   const highlightRef   = useRef<HTMLDivElement>(null);
   const rawTextRef     = useRef(rawText);
   rawTextRef.current   = rawText;
+
+  // 行ジャンプ: focusLineIndex が設定されたらその行へスクロール＆カーソル移動
+  useEffect(() => {
+    if (focusLineIndex === null) return;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const lines = rawText.split('\n');
+    const charPos = lines
+      .slice(0, focusLineIndex)
+      .reduce((sum, l) => sum + l.length + 1, 0);
+    ta.focus();
+    ta.setSelectionRange(charPos, charPos);
+    const lineHeight = 24; // leading-6
+    const targetScroll = focusLineIndex * lineHeight - ta.clientHeight / 3;
+    ta.scrollTop = Math.max(0, targetScroll);
+    setFocusLineIndex(null);
+  }, [focusLineIndex, rawText, setFocusLineIndex]);
 
   // スクロール同期
   const syncScroll = useCallback(() => {

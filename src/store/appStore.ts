@@ -37,6 +37,8 @@ interface AppState {
   setMemoText:            (text: string) => void;
   setStoredMemoName:      (name: string | null) => void;
   setMemoSaveStatus:      (status: SaveStatus) => void;
+  focusLineIndex:         number | null;
+  setFocusLineIndex:      (idx: number | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -55,6 +57,7 @@ export const useAppStore = create<AppState>((set) => ({
   memoText:             '',
   storedMemoName:       localStorage.getItem('spm_memo_name'),
   memoSaveStatus:       'disconnected' as SaveStatus,
+  focusLineIndex:         null,
 
   setActiveTab:           (activeTab)           => set({ activeTab }),
   setRawText:             (rawText)             => set({ rawText }),
@@ -71,4 +74,5 @@ export const useAppStore = create<AppState>((set) => ({
   setMemoText:            (memoText)            => set({ memoText }),
   setStoredMemoName:      (storedMemoName)      => set({ storedMemoName }),
   setMemoSaveStatus:      (memoSaveStatus)      => set({ memoSaveStatus }),
+  setFocusLineIndex:      (focusLineIndex)      => set({ focusLineIndex }),
 }));

@@ -186,6 +186,11 @@ interface TaskRowProps {
 function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar }: TaskRowProps) {
   const isDone = task.status === 'done';
   const [subtasksOpen, setSubtasksOpen] = useState(task.starred);
+  const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
+
+  const handleTitleDoubleClick = useCallback(() => {
+    setFocusLineIndex(task.lineIndex);
+  }, [setFocusLineIndex, task.lineIndex]);
 
   return (
     <div className={faded ? 'opacity-60' : ''}>
@@ -214,11 +219,15 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, o
           {task.project && (
             <span className="text-xs text-blue-400 mr-1">{task.project}:</span>
           )}
-          <span className={`text-sm ${
-            isDone           ? 'line-through text-gray-600' :
-            task.starred     ? 'text-amber-200 font-semibold' :
-                               'text-gray-200'
-          }`}>
+          <span
+            className={`text-sm cursor-pointer select-none ${
+              isDone           ? 'line-through text-gray-600' :
+              task.starred     ? 'text-amber-200 font-semibold' :
+                                 'text-gray-200'
+            }`}
+            title="ダブルクリックでエディタの該当行へジャンプ"
+            onDoubleClick={handleTitleDoubleClick}
+          >
             {task.title}
           </span>
           {task.doneDate && (
