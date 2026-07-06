@@ -224,6 +224,9 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, o
           {task.doneDate && (
             <span className="text-xs text-gray-600 ml-1">({task.doneDate})</span>
           )}
+          {task.deadline && !isDone && (
+            <DeadlineBadge deadline={task.deadline} />
+          )}
           {/* ★ トグルボタン */}
           <button
             type="button"
@@ -310,5 +313,34 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, o
         </div>
       )}
     </div>
+  );
+}
+
+function DeadlineBadge({ deadline }: { deadline: string }) {
+  const [m, d] = deadline.split('/').map(Number);
+  const now = new Date();
+  const deadlineDate = new Date(now.getFullYear(), m - 1, d);
+  deadlineDate.setHours(0, 0, 0, 0);
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const diffDays = Math.round(
+    (deadlineDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  let colorClass: string;
+  if (diffDays < 0) {
+    colorClass = 'text-red-400 border-red-700 bg-red-950/40';
+  } else if (diffDays === 0) {
+    colorClass = 'text-orange-400 border-orange-700 bg-orange-950/40';
+  } else if (diffDays <= 3) {
+    colorClass = 'text-yellow-400 border-yellow-700 bg-yellow-950/40';
+  } else {
+    colorClass = 'text-gray-400 border-gray-700 bg-gray-800/40';
+  }
+
+  return (
+    <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full border ${colorClass}`}>
+      {deadline}
+    </span>
   );
 }
