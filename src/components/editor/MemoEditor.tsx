@@ -326,12 +326,14 @@ export function MemoEditor() {
               const trimmed     = line.trim();
               const isSection    = SECTION_RE.test(trimmed);
               const isSubsection = SUBSECTION_RE.test(trimmed);
+              const isBlackSq    = trimmed.startsWith('■');
               return (
                 <div
                   key={i}
                   className={`leading-6 ${
                     isSection    ? 'text-emerald-300 font-bold' :
                     isSubsection ? 'text-sky-300 font-semibold' :
+                    isBlackSq    ? 'text-amber-300 font-semibold' :
                                    'text-gray-200'
                   }`}
                 >
