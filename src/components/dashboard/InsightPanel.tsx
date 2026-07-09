@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { TimelineChart } from './TimelineChart';
 import { TaskProgress } from './TaskProgress';
@@ -24,8 +24,20 @@ const TABS: { id: PanelTab; label: string }[] = [
 ];
 
 export function InsightPanel() {
-  const parsedData = useAppStore((s) => s.parsedData);
+  const parsedData    = useAppStore((s) => s.parsedData);
+  const appActiveTab  = useAppStore((s) => s.activeTab);
   const [activeTab, setActiveTab] = useState<PanelTab>('task');
+
+  // 過去タブでは「タスク進捗」「タスク期限」を非表示。選択中なら稼働サマリーへ退避
+  const visibleTabs = appActiveTab === 'archive'
+    ? TABS.filter((t) => t.id !== 'task' && t.id !== 'deadline')
+    : TABS;
+
+  useEffect(() => {
+    if (appActiveTab === 'archive' && (activeTab === 'task' || activeTab === 'deadline')) {
+      setActiveTab('summary');
+    }
+  }, [appActiveTab, activeTab]);
 
   if (!parsedData) {
     return (
@@ -57,7 +69,7 @@ export function InsightPanel() {
 
       {/* ── タブバー ──────────────────────────── */}
       <div className="flex shrink-0 border-b border-gray-800">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"

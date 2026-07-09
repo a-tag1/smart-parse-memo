@@ -98,6 +98,78 @@ export function buildTodayTemplate(
   return `DATE: ${date}\n\n### １．本日予定\n\n### ２．本日結果\n\n### ３．タスク${tasksContent}${completedSection}`;
 }
 
+/** 完了タスクセクションテキストを行リストに変換（空行・見出し除去） */
+export function parseCompletedTaskLines(sectionText: string): string[] {
+  return sectionText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+}
+
+/** 完了タスクセクションテキストの重複行を除去して返す */
+export function deduplicateCompletedSection(text: string): string {
+  const seen = new Set<string>();
+  return text
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim();
+      if (t === '') return true; // 空行は保持
+      if (seen.has(t)) return false;
+      seen.add(t);
+      return true;
+    })
+    .join('\n');
+}
+
+/**
+ * 指定月のアーカイブエントリから「いつ完了したか」を差分ベースで集計する。
+ * 各エントリの完了タスクを前エントリと比較し、新規追加分にのみ日付を付与する。
+ * @param entries  全アーカイブエントリ
+ * @param yearMonth  対象月 "YYYY-MM"
+ */
+export function aggregateMonthlyCompletedTasks(
+  entries: ArchiveEntry[],
+  yearMonth: string,
+): { date: string; tasks: string[] }[] {
+  // 当月エントリを昇順ソート
+  const monthEntries = entries
+    .filter((e) => e.date.startsWith(yearMonth))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (monthEntries.length === 0) return [];
+
+  // 当月より前の最新エントリの完了タスクを初期ベースとする
+  const prevEntry = entries
+    .filter((e) => e.date < `${yearMonth}-01`)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .at(-1);
+
+  const knownTasks = new Set<string>(
+    prevEntry
+      ? parseCompletedTaskLines(extractCompletedTasksSection(prevEntry.rawText))
+      : [],
+  );
+
+  const result: { date: string; tasks: string[] }[] = [];
+
+  for (const entry of monthEntries) {
+    const completedText = extractCompletedTasksSection(entry.rawText);
+    // 表示用：インデントを保持した生行（空行除く）
+    const rawLines     = completedText.split('\n').filter((l) => l.trim().length > 0);
+    // 重複判定用：trimした文字列
+    const trimmedLines = rawLines.map((l) => l.trim());
+
+    const newRawLines = rawLines.filter((_, i) => !knownTasks.has(trimmedLines[i]));
+    if (newRawLines.length > 0) {
+      result.push({ date: entry.date, tasks: newRawLines });
+    }
+    // 今日の新規タスクも以降の比較ベースに追加
+    for (const t of trimmedLines) knownTasks.add(t);
+  }
+
+  return result;
+}
+
 /** 今日の日付を "YYYY-MM-DD" で返す */
 export function getTodayDate(): string {
   const d = new Date();
