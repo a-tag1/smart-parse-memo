@@ -12,6 +12,7 @@ export function MemoEditor() {
   const memoFileHandle    = useAppStore((s) => s.memoFileHandle);
   const memoSaveStatus    = useAppStore((s) => s.memoSaveStatus);
   const setMemoSaveStatus = useAppStore((s) => s.setMemoSaveStatus);
+  const setMemoText       = useAppStore((s) => s.setMemoText);
   const { saveMemo, openMemoFile } = useFileAccess();
 
   // ── ローカル編集テキスト（入力ラグ回避：storeには保存時のみ反映） ──
@@ -19,12 +20,32 @@ export function MemoEditor() {
   const localTextRef = useRef(localText);
   localTextRef.current = localText;
 
+  // stale closure 回避用 ref（クリーンアップ内で最新値を参照するため）
+  const memoFileHandleRef  = useRef(memoFileHandle);
+  memoFileHandleRef.current = memoFileHandle;
+  const memoSaveStatusRef  = useRef(memoSaveStatus);
+  memoSaveStatusRef.current = memoSaveStatus;
+  const saveMemoRef        = useRef(saveMemo);
+  saveMemoRef.current       = saveMemo;
+
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
 
   // ファイルが開かれた / 再接続されたときにローカルテキストを同期
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setLocalText(memoText); }, [memoFileHandle]);
+
+  // タブ離脱（アンマウント）時: store を更新 ＋ ファイルへ自動保存
+  useEffect(() => {
+    return () => {
+      const text = localTextRef.current;
+      setMemoText(text); // store を常に最新に保つ（タブ再訪時に復元）
+      if (memoFileHandleRef.current && memoSaveStatusRef.current === 'unsaved') {
+        saveMemoRef.current(text); // 未保存ならファイルにも自動保存
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setMemoText]);
 
   // ハイライト層はカーソルと常に同期させるため localText を直接使用
   const displayLines = localText.split('\n');
