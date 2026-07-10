@@ -94,7 +94,7 @@ export function InsightPanel() {
           <TaskDeadline tasks={tasks} />
         )}
         {activeTab === 'summary' && (
-          <WorkSummary entries={workSummary} />
+          <WorkSummary entries={workSummary} planEntries={parsedData.planSummary} />
         )}
         {activeTab === 'timeline' && (
           <TimelineChart schedules={schedules} />

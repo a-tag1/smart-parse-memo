@@ -37,6 +37,7 @@ export interface ParsedData {
   tasks:          Task[];        // ### ３．タスク（アクティブ）
   completedTasks: Task[];        // ### ４．当月完了タスク
   workSummary:    WorkSummaryEntry[];
+  planSummary:    WorkSummaryEntry[];
 }
 
 // ── メインのパース関数 ──────────────────────────────────────────
@@ -91,6 +92,7 @@ export function parseText(rawText: string): ParsedData {
     tasks:          extractTasks(taskLines, taskLineIndices),
     completedTasks: extractTasks(completedTaskLines, completedTaskLineIndices),
     workSummary:    [],
+    planSummary:    [],
   };
 }
 

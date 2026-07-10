@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { parseText } from '../lib/parserEngine';
-import { buildWorkSummary } from '../lib/summaryEngine';
+import { buildWorkSummary, buildPlanSummary } from '../lib/summaryEngine';
 
 export function useParser() {
   const rawText             = useAppStore((s) => s.rawText);
@@ -22,6 +22,7 @@ export function useParser() {
 
     const parsed      = parseText(textToParse);
     const workSummary = buildWorkSummary(parsed.schedules);
-    setParsedData({ ...parsed, workSummary });
+    const planSummary = buildPlanSummary(parsed.schedules);
+    setParsedData({ ...parsed, workSummary, planSummary });
   }, [rawText, activeTab, archiveEntries, selectedArchiveDate, setParsedData]);
 }
