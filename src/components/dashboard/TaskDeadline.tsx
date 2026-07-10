@@ -1,3 +1,4 @@
+import { useAppStore } from '../../store/appStore';
 import type { Task } from '../../lib/parserEngine';
 
 interface Props {
@@ -21,6 +22,8 @@ function today(): Date {
 }
 
 export function TaskDeadline({ tasks }: Props) {
+  const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
+
   // 期限が設定されていて未完了のタスクのみ対象
   const tasksWithDeadline = tasks.filter(
     (t) => t.deadline && t.status !== 'done',
@@ -124,9 +127,11 @@ export function TaskDeadline({ tasks }: Props) {
                         </span>
                       )}
                       <span
-                        className={`text-sm ${
+                        className={`text-sm cursor-pointer select-none ${
                           task.starred ? 'text-amber-200 font-semibold' : 'text-gray-200'
                         }`}
+                        title="ダブルクリックでエディタの該当行へジャンプ"
+                        onDoubleClick={() => setFocusLineIndex(task.lineIndex)}
                       >
                         {task.starred && (
                           <span className="text-amber-400 mr-0.5">★</span>
