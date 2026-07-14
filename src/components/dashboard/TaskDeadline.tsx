@@ -24,12 +24,12 @@ function today(): Date {
 export function TaskDeadline({ tasks }: Props) {
   const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
 
-  // 期限が設定されていて未完了のタスクのみ対象
-  const tasksWithDeadline = tasks.filter(
-    (t) => t.deadline && t.status !== 'done',
-  );
+  // 未完了タスクを期限あり・なしに分ける
+  const incompleteTasks = tasks.filter((t) => t.status !== 'done');
+  const tasksWithDeadline = incompleteTasks.filter((t) => t.deadline);
+  const tasksWithoutDeadline = incompleteTasks.filter((t) => !t.deadline);
 
-  if (tasksWithDeadline.length === 0) {
+  if (tasksWithDeadline.length === 0 && tasksWithoutDeadline.length === 0) {
     return (
       <section className="px-4 py-3">
         <h2 className="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-wider">
@@ -145,6 +145,46 @@ export function TaskDeadline({ tasks }: Props) {
             </div>
           );
         })}
+
+        {/* 期限未設定タスク */}
+        {tasksWithoutDeadline.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-sm font-semibold text-gray-500">
+                期限未設定
+              </span>
+              <div className="flex-1 h-px bg-gray-800" />
+            </div>
+            <div className="space-y-1.5 pl-1">
+              {tasksWithoutDeadline.map((task) => (
+                <div key={task.id} className="flex items-start gap-1.5">
+                  <span className="text-[10px] font-mono text-gray-600 mt-0.5 shrink-0">
+                    [{task.id}]
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    {task.project && (
+                      <span className="text-xs text-blue-400 mr-1">
+                        {task.project}:
+                      </span>
+                    )}
+                    <span
+                      className={`text-sm cursor-pointer select-none ${
+                        task.starred ? 'text-amber-200 font-semibold' : 'text-gray-400'
+                      }`}
+                      title="ダブルクリックでエディタの該当行へジャンプ"
+                      onDoubleClick={() => setFocusLineIndex(task.lineIndex)}
+                    >
+                      {task.starred && (
+                        <span className="text-amber-400 mr-0.5">★</span>
+                      )}
+                      {task.title}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
