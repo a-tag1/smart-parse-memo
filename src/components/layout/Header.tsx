@@ -94,6 +94,12 @@ export function Header() {
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
+    case 'reloaded':
+      return (
+        <span className="flex items-center gap-1 text-cyan-400 text-xs">
+          <RefreshCw size={13} /> 外部変更を読み込み
+        </span>
+      );
     case 'saved':
       return (
         <span className="flex items-center gap-1 text-green-400 text-xs">

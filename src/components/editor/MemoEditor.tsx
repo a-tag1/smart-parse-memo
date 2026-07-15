@@ -35,6 +35,13 @@ export function MemoEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setLocalText(memoText); }, [memoFileHandle]);
 
+  // 外部更新によりファイルが再読み込みされた場合にローカルテキストを同期
+  useEffect(() => {
+    if (memoSaveStatus === 'reloaded') {
+      setLocalText(memoText);
+    }
+  }, [memoSaveStatus, memoText]);
+
   // タブ離脱（アンマウント）時: store を更新 ＋ ファイルへ自動保存
   useEffect(() => {
     return () => {
@@ -292,11 +299,13 @@ export function MemoEditor() {
               memoSaveStatus === 'saved'        ? 'text-green-500' :
               memoSaveStatus === 'unsaved'      ? 'text-orange-400' :
               memoSaveStatus === 'saving'       ? 'text-yellow-400' :
+              memoSaveStatus === 'reloaded'     ? 'text-cyan-400' :
                                                   'text-gray-600'
             }`}>
-              {memoSaveStatus === 'saved'   ? '保存済み' :
-               memoSaveStatus === 'unsaved' ? '未保存' :
-               memoSaveStatus === 'saving'  ? '保存中...' : '未接続'}
+              {memoSaveStatus === 'saved'    ? '保存済み' :
+               memoSaveStatus === 'unsaved'  ? '未保存' :
+               memoSaveStatus === 'saving'   ? '保存中...' :
+               memoSaveStatus === 'reloaded' ? '外部変更を読み込み' : '未接続'}
             </span>
           )}
         </div>

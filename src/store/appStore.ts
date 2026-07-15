@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { ParsedData } from '../lib/parserEngine';
 import type { ArchiveEntry } from '../lib/archiveEngine';
 
-export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'disconnected';
+export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'disconnected' | 'reloaded';
 export type ActiveTab  = 'today' | 'archive' | 'memo';
 
 interface AppState {
@@ -21,6 +21,8 @@ interface AppState {
   memoText:             string;
   storedMemoName:       string | null;
   memoSaveStatus:       SaveStatus;
+  todayLastModified:    number | null;
+  memoLastModified:     number | null;
 
   setActiveTab:           (tab: ActiveTab) => void;
   setRawText:             (text: string) => void;
@@ -37,6 +39,8 @@ interface AppState {
   setMemoText:            (text: string) => void;
   setStoredMemoName:      (name: string | null) => void;
   setMemoSaveStatus:      (status: SaveStatus) => void;
+  setTodayLastModified:   (ts: number | null) => void;
+  setMemoLastModified:    (ts: number | null) => void;
   focusLineIndex:         number | null;
   setFocusLineIndex:      (idx: number | null) => void;
 }
@@ -57,6 +61,8 @@ export const useAppStore = create<AppState>((set) => ({
   memoText:             '',
   storedMemoName:       localStorage.getItem('spm_memo_name'),
   memoSaveStatus:       'disconnected' as SaveStatus,
+  todayLastModified:    null,
+  memoLastModified:     null,
   focusLineIndex:         null,
 
   setActiveTab:           (activeTab)           => set({ activeTab }),
@@ -74,5 +80,7 @@ export const useAppStore = create<AppState>((set) => ({
   setMemoText:            (memoText)            => set({ memoText }),
   setStoredMemoName:      (storedMemoName)      => set({ storedMemoName }),
   setMemoSaveStatus:      (memoSaveStatus)      => set({ memoSaveStatus }),
+  setTodayLastModified:   (todayLastModified)   => set({ todayLastModified }),
+  setMemoLastModified:    (memoLastModified)    => set({ memoLastModified }),
   setFocusLineIndex:      (focusLineIndex)      => set({ focusLineIndex }),
 }));

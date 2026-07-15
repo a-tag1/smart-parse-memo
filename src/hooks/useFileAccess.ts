@@ -39,6 +39,10 @@ export function useFileAccess() {
   const setMemoText           = useAppStore((s) => s.setMemoText);
   const setStoredMemoName     = useAppStore((s) => s.setStoredMemoName);
   const setMemoSaveStatus     = useAppStore((s) => s.setMemoSaveStatus);
+  const todayLastModified     = useAppStore((s) => s.todayLastModified);
+  const setTodayLastModified  = useAppStore((s) => s.setTodayLastModified);
+  const memoLastModified      = useAppStore((s) => s.memoLastModified);
+  const setMemoLastModified   = useAppStore((s) => s.setMemoLastModified);
 
   /** daily_today.txt を開く。日付不一致の場合は通知を出す */
   const openTodayFile = useCallback(async () => {
@@ -55,6 +59,7 @@ export function useFileAccess() {
 
       setTodayFileHandle(handle);
       setRawText(text);
+      setTodayLastModified(file.lastModified);
       setSaveStatus('saved');
       await saveHandle(HANDLE_KEY_TODAY, handle);
       localStorage.setItem(LS_KEY_TODAY_NAME, handle.name);
@@ -72,7 +77,7 @@ export function useFileAccess() {
         console.error('ファイルを開けませんでした:', err);
       }
     }
-  }, [setRawText, setTodayFileHandle, setSaveStatus, setStoredTodayName, setPendingReconnect]);
+  }, [setRawText, setTodayFileHandle, setSaveStatus, setStoredTodayName, setPendingReconnect, setTodayLastModified]);
 
   /** archive_YYYY_MM.txt を開いてエントリを読み込む */
   const openArchiveFile = useCallback(async () => {
@@ -108,6 +113,7 @@ export function useFileAccess() {
       const text = (await file.text()).replace(/\r\n/g, '\n');
       setMemoFileHandle(handle);
       setMemoText(text);
+      setMemoLastModified(file.lastModified);
       setMemoSaveStatus('saved');
       await saveHandle(HANDLE_KEY_MEMO, handle);
       localStorage.setItem(LS_KEY_MEMO_NAME, handle.name);
@@ -117,7 +123,7 @@ export function useFileAccess() {
         console.error('メモファイルを開けませんでした:', err);
       }
     }
-  }, [setMemoFileHandle, setMemoText, setMemoSaveStatus, setStoredMemoName]);
+  }, [setMemoFileHandle, setMemoText, setMemoSaveStatus, setStoredMemoName, setMemoLastModified]);
 
   /** memo_archive.txt に保存する */
   const saveMemo = useCallback(
@@ -125,9 +131,20 @@ export function useFileAccess() {
       if (!memoFileHandle) return;
       setMemoSaveStatus('saving');
       try {
+        const currentFile = await memoFileHandle.getFile();
+        if (memoLastModified !== null && currentFile.lastModified > memoLastModified) {
+          // 外部でファイルが更新されていたため再読み込み
+          const reloadedText = (await currentFile.text()).replace(/\r\n/g, '\n');
+          setMemoText(reloadedText);
+          setMemoLastModified(currentFile.lastModified);
+          setMemoSaveStatus('reloaded');
+          return;
+        }
         const writable = await memoFileHandle.createWritable();
         await writable.write(text);
         await writable.close();
+        const savedFile = await memoFileHandle.getFile();
+        setMemoLastModified(savedFile.lastModified);
         setMemoText(text);           // ハイライト・セクションナビを保存済み内容に屏止
         setMemoSaveStatus('saved');
       } catch (err) {
@@ -135,7 +152,7 @@ export function useFileAccess() {
         setMemoSaveStatus('disconnected');
       }
     },
-    [memoFileHandle, setMemoSaveStatus, setMemoText],
+    [memoFileHandle, memoLastModified, setMemoSaveStatus, setMemoText, setMemoLastModified],
   );
 
   /** daily_today.txt にデバウンス保存する */
@@ -144,16 +161,27 @@ export function useFileAccess() {
       if (!todayFileHandle) return;
       setSaveStatus('saving');
       try {
+        const currentFile = await todayFileHandle.getFile();
+        if (todayLastModified !== null && currentFile.lastModified > todayLastModified) {
+          // 外部でファイルが更新されていたため再読み込み
+          const reloadedText = (await currentFile.text()).replace(/\r\n/g, '\n');
+          setRawText(reloadedText);
+          setTodayLastModified(currentFile.lastModified);
+          setSaveStatus('reloaded');
+          return;
+        }
         const writable = await todayFileHandle.createWritable();
         await writable.write(text);
         await writable.close();
+        const savedFile = await todayFileHandle.getFile();
+        setTodayLastModified(savedFile.lastModified);
         setSaveStatus('saved');
       } catch (err) {
         console.error('保存に失敗しました:', err);
         setSaveStatus('disconnected');
       }
     },
-    [todayFileHandle, setSaveStatus],
+    [todayFileHandle, todayLastModified, setSaveStatus, setRawText, setTodayLastModified],
   );
 
   /**
@@ -292,6 +320,7 @@ export function useFileAccess() {
           const text = (await file.text()).replace(/\r\n/g, '\n');
           setMemoFileHandle(memoHandle);
           setMemoText(text);
+          setMemoLastModified(file.lastModified);
           setMemoSaveStatus('saved');
         } else {
           hasPending = true;
@@ -305,12 +334,14 @@ export function useFileAccess() {
   }, [
     setRawText,
     setTodayFileHandle,
+    setTodayLastModified,
     setArchiveFileHandle,
     setArchiveEntries,
     setSaveStatus,
     setPendingReconnect,
     setMemoFileHandle,
     setMemoText,
+    setMemoLastModified,
     setMemoSaveStatus,
   ]);
 
@@ -330,6 +361,7 @@ export function useFileAccess() {
           const text = (await file.text()).replace(/\r\n/g, '\n');
           setTodayFileHandle(todayHandle);
           setRawText(text);
+          setTodayLastModified(file.lastModified);
           setSaveStatus('saved');
           anyConnected = true;
         }
@@ -362,6 +394,7 @@ export function useFileAccess() {
           const text = (await file.text()).replace(/\r\n/g, '\n');
           setMemoFileHandle(memoHandle);
           setMemoText(text);
+          setMemoLastModified(file.lastModified);
           setMemoSaveStatus('saved');
         }
       }
@@ -373,12 +406,14 @@ export function useFileAccess() {
   }, [
     setRawText,
     setTodayFileHandle,
+    setTodayLastModified,
     setArchiveFileHandle,
     setArchiveEntries,
     setSaveStatus,
     setPendingReconnect,
     setMemoFileHandle,
     setMemoText,
+    setMemoLastModified,
     setMemoSaveStatus,
   ]);
 
