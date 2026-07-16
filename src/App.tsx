@@ -5,10 +5,12 @@ import { ArchiveView } from './components/editor/ArchiveView';
 import { MemoEditor } from './components/editor/MemoEditor';
 import { InsightPanel } from './components/dashboard/InsightPanel';
 import { useParser } from './hooks/useParser';
+import { useFileWatcher } from './hooks/useFileWatcher';
 import { useAppStore } from './store/appStore';
 
 function App() {
-  useParser(); // rawText / アーカイブ選択の変更を監視してパース結果を更新
+  useParser();      // rawText / アーカイブ選択の変更を監視してパース結果を更新
+  useFileWatcher(); // 外部変更を定期検知して自動リロード
 
   const activeTab = useAppStore((s) => s.activeTab);
 

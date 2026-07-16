@@ -285,6 +285,7 @@ export function useFileAccess() {
           const text = (await file.text()).replace(/\r\n/g, '\n');
           setTodayFileHandle(todayHandle);
           setRawText(text);
+          setTodayLastModified(file.lastModified);
           setSaveStatus('saved');
         } else {
           hasPending = true;
