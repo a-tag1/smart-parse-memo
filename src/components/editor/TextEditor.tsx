@@ -1,7 +1,9 @@
-﻿import { useRef, useCallback, useLayoutEffect, useEffect } from 'react';
+﻿import { useRef, useCallback, useLayoutEffect, useEffect, useState } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 import { useShortcuts } from '../../hooks/useShortcuts';
+import { ActionMenu } from './ActionMenu';
+import type { ActionType } from './ActionMenu';
 
 export function TextEditor() {
   const rawText         = useAppStore((s) => s.rawText);
@@ -11,14 +13,21 @@ export function TextEditor() {
   const focusLineIndex    = useAppStore((s) => s.focusLineIndex);
   const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
 
-  const { saveToday }        = useFileAccess();
-  const { handleShiftEnter } = useShortcuts();
+  const { saveToday }                  = useFileAccess();
+  const { handleShiftEnter, handleAction } = useShortcuts();
 
   const textareaRef    = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const highlightRef   = useRef<HTMLDivElement>(null);
   const rawTextRef     = useRef(rawText);
   rawTextRef.current   = rawText;
+
+  // ダブルShift検出用（最後に押した時刻。0 = 未押下）
+  const lastShiftPressRef = useRef<number>(0);
+
+  // アクションメニュー状態
+  const [menuOpen, setMenuOpen]         = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
   // 行ジャンプ: focusLineIndex が設定されたらその行へスクロール＆カーソル移動
   useEffect(() => {
@@ -67,9 +76,37 @@ export function TextEditor() {
     [setRawText, todayFileHandle, setSaveStatus],
   );
 
-  // キーボードショートカット（Shift+Enter / Ctrl+S）
+  // キーボードショートカット（Shift+Enter / Ctrl+S / ダブルShiftでアクションメニュー）
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Shift キー単押し（キーリピートは除外）
+      if (e.key === 'Shift' && !e.repeat) {
+        const now = Date.now();
+        const last = lastShiftPressRef.current;
+        if (last > 0 && now - last < 500) {
+          // ダブルShift確定: カーソル行の直下にメニューを表示
+          lastShiftPressRef.current = 0;
+          const ta         = e.currentTarget;
+          const textBefore = ta.value.slice(0, ta.selectionStart);
+          const lineNumber = textBefore.split('\n').length - 1;
+          const rect       = ta.getBoundingClientRect();
+          setMenuPosition({
+            x: rect.left + 16,
+            y: rect.top + 16 + (lineNumber + 1) * 24 - ta.scrollTop,
+          });
+          setMenuOpen(true);
+        } else {
+          lastShiftPressRef.current = now;
+        }
+        return;
+      }
+
+      // Shift 以外のキーが押されたらダブルShiftタイマーをリセット
+      lastShiftPressRef.current = 0;
+
+      // メニュー表示中は閉じる
+      if (menuOpen) setMenuOpen(false);
+
       if (e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
         handleShiftEnter(e.currentTarget);
@@ -79,7 +116,17 @@ export function TextEditor() {
         saveToday(rawTextRef.current);
       }
     },
-    [handleShiftEnter, saveToday],
+    [menuOpen, handleShiftEnter, saveToday],
+  );
+
+  // アクションメニューの選択処理
+  const handleMenuSelect = useCallback(
+    (action: ActionType) => {
+      setMenuOpen(false);
+      const ta = textareaRef.current;
+      if (ta) handleAction(ta, action);
+    },
+    [handleAction],
   );
 
   // Tab キー（インデント）
@@ -166,10 +213,19 @@ export function TextEditor() {
           placeholder={
             todayFileHandle
               ? ''
-              : 'ファイルを開いて編集を開始してください...\n\nヒント: Shift+Enter で次の項番を自動挿入します'
+              : 'ファイルを開いて編集を開始してください...\n\nヒント: Shift+Enter で次の項番を自動挿入します\nヒント: Shift キーを素早く2回押してアクションメニューを表示'
           }
         />
       </div>
+
+      {/* アクションメニュー（ダブルShiftで表示） */}
+      {menuOpen && (
+        <ActionMenu
+          position={menuPosition}
+          onSelect={handleMenuSelect}
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
     </div>
   );
 }

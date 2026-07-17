@@ -1,6 +1,9 @@
 import { useRef, useCallback, useState, useEffect, useDeferredValue, useLayoutEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
+import { useShortcuts } from '../../hooks/useShortcuts';
+import { ActionMenu } from './ActionMenu';
+import type { ActionType } from './ActionMenu';
 
 /** ==== 名前 ==== 形式のセクション見出し（===== は除外） */
 const SECTION_RE = /^={4}(?!=)\s+(.+?)\s+={4}(?!=)\s*$/;
@@ -28,8 +31,15 @@ export function MemoEditor() {
   const saveMemoRef        = useRef(saveMemo);
   saveMemoRef.current       = saveMemo;
 
+  const { handleAction } = useShortcuts();
+
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
+
+  // ダブルShift / Alt++ アクションメニュー
+  const lastShiftPressRef               = useRef<number>(0);
+  const [menuOpen, setMenuOpen]         = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
   // ファイルが開かれた / 再接続されたときにローカルテキストを同期
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,9 +116,39 @@ export function MemoEditor() {
     [memoFileHandle, setMemoSaveStatus],
   );
 
+  /** メニュー表示位置を計算してセット */
+  const openMenu = useCallback((ta: HTMLTextAreaElement) => {
+    const textBefore = ta.value.slice(0, ta.selectionStart);
+    const lineNumber = textBefore.split('\n').length - 1;
+    const rect       = ta.getBoundingClientRect();
+    setMenuPosition({
+      x: rect.left + 16,
+      y: rect.top + 16 + (lineNumber + 1) * 24 - ta.scrollTop,
+    });
+    setMenuOpen(true);
+  }, []);
+
   /** キーボードショートカット */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Shift キー単押し（キーリピートは除外）
+      if (e.key === 'Shift' && !e.repeat) {
+        const now  = Date.now();
+        const last = lastShiftPressRef.current;
+        if (last > 0 && now - last < 500) {
+          lastShiftPressRef.current = 0;
+          openMenu(e.currentTarget);
+        } else {
+          lastShiftPressRef.current = now;
+        }
+        return;
+      }
+
+      // Shift 以外でダブルShiftタイマーをリセット
+      lastShiftPressRef.current = 0;
+
+      if (menuOpen) setMenuOpen(false);
+
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         saveMemo(localTextRef.current);
@@ -127,7 +167,17 @@ export function MemoEditor() {
         });
       }
     },
-    [saveMemo],
+    [menuOpen, openMenu, saveMemo],
+  );
+
+  /** アクションメニュー選択 */
+  const handleMenuSelect = useCallback(
+    (action: ActionType) => {
+      setMenuOpen(false);
+      const ta = textareaRef.current;
+      if (ta) handleAction(ta, action, setLocalText);
+    },
+    [handleAction],
   );
 
   /** 指定行へジャンプ（localTextRefで精度確保） */
@@ -387,6 +437,15 @@ export function MemoEditor() {
                        break-all [scrollbar-gutter:stable]"
           />
         </div>
+      )}
+
+      {/* アクションメニュー（ダブルShift / Alt++ で表示） */}
+      {menuOpen && (
+        <ActionMenu
+          position={menuPosition}
+          onSelect={handleMenuSelect}
+          onClose={() => setMenuOpen(false)}
+        />
       )}
     </div>
   );
