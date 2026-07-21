@@ -10,6 +10,7 @@ export function Header() {
   const archiveFileHandle = useAppStore((s) => s.archiveFileHandle);
   const memoFileHandle    = useAppStore((s) => s.memoFileHandle);
   const saveStatus        = useAppStore((s) => s.saveStatus);
+  const memoSaveStatus    = useAppStore((s) => s.memoSaveStatus);
   const pendingReconnect  = useAppStore((s) => s.pendingReconnect);
   const storedTodayName   = useAppStore((s) => s.storedTodayName);
   const storedArchiveName = useAppStore((s) => s.storedArchiveName);
@@ -56,6 +57,7 @@ export function Header() {
         {/* 右: 保存ステータス・ボタン群 */}
         <div className="flex items-center gap-2 shrink-0">
           {activeTab === 'today' && <StatusBadge status={saveStatus} />}
+          {activeTab === 'memo' && <StatusBadge status={memoSaveStatus} />}
 
           {/* 再接続ボタン（IndexedDB にハンドルがあるが未接続の場合のみ表示） */}
           {pendingReconnect && (

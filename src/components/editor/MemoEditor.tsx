@@ -343,21 +343,6 @@ export function MemoEditor() {
             </>
           )}
 
-          {/* 保存ステータス（右端） */}
-          {memoFileHandle && (
-            <span className={`ml-auto shrink-0 text-xs select-none ${
-              memoSaveStatus === 'saved'        ? 'text-green-500' :
-              memoSaveStatus === 'unsaved'      ? 'text-orange-400' :
-              memoSaveStatus === 'saving'       ? 'text-yellow-400' :
-              memoSaveStatus === 'reloaded'     ? 'text-cyan-400' :
-                                                  'text-gray-600'
-            }`}>
-              {memoSaveStatus === 'saved'    ? '保存済み' :
-               memoSaveStatus === 'unsaved'  ? '未保存' :
-               memoSaveStatus === 'saving'   ? '保存中...' :
-               memoSaveStatus === 'reloaded' ? '外部変更を読み込み' : '未接続'}
-            </span>
-          )}
         </div>
 
         {/* 第2行: 展開されたサブセクションボタン */}
