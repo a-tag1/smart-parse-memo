@@ -297,7 +297,7 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, o
                   );
                 }
                 return (
-                  <span className={`text-xs ${sub.done ? 'line-through text-gray-600' : 'text-gray-400'}`}>
+                  <span className={sub.done ? 'text-xs line-through text-gray-600' : 'text-sm text-gray-400'}>
                     {sub.text}
                     {sub.doneDate && <span className="text-gray-600 ml-1">({sub.doneDate})</span>}
                   </span>
