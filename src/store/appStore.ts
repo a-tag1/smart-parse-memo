@@ -23,6 +23,8 @@ interface AppState {
   memoSaveStatus:       SaveStatus;
   todayLastModified:    number | null;
   memoLastModified:     number | null;
+  pendingExternalToday: { content: string; lastModified: number } | null;
+  pendingExternalMemo:  { content: string; lastModified: number } | null;
 
   setActiveTab:           (tab: ActiveTab) => void;
   setRawText:             (text: string) => void;
@@ -39,8 +41,10 @@ interface AppState {
   setMemoText:            (text: string) => void;
   setStoredMemoName:      (name: string | null) => void;
   setMemoSaveStatus:      (status: SaveStatus) => void;
-  setTodayLastModified:   (ts: number | null) => void;
-  setMemoLastModified:    (ts: number | null) => void;
+  setTodayLastModified:      (ts: number | null) => void;
+  setMemoLastModified:       (ts: number | null) => void;
+  setPendingExternalToday:   (v: { content: string; lastModified: number } | null) => void;
+  setPendingExternalMemo:    (v: { content: string; lastModified: number } | null) => void;
   focusLineIndex:         number | null;
   setFocusLineIndex:      (idx: number | null) => void;
 }
@@ -63,6 +67,8 @@ export const useAppStore = create<AppState>((set) => ({
   memoSaveStatus:       'disconnected' as SaveStatus,
   todayLastModified:    null,
   memoLastModified:     null,
+  pendingExternalToday: null,
+  pendingExternalMemo:  null,
   focusLineIndex:         null,
 
   setActiveTab:           (activeTab)           => set({ activeTab }),
@@ -80,7 +86,9 @@ export const useAppStore = create<AppState>((set) => ({
   setMemoText:            (memoText)            => set({ memoText }),
   setStoredMemoName:      (storedMemoName)      => set({ storedMemoName }),
   setMemoSaveStatus:      (memoSaveStatus)      => set({ memoSaveStatus }),
-  setTodayLastModified:   (todayLastModified)   => set({ todayLastModified }),
-  setMemoLastModified:    (memoLastModified)    => set({ memoLastModified }),
+  setTodayLastModified:      (todayLastModified)      => set({ todayLastModified }),
+  setMemoLastModified:       (memoLastModified)       => set({ memoLastModified }),
+  setPendingExternalToday:   (pendingExternalToday)   => set({ pendingExternalToday }),
+  setPendingExternalMemo:    (pendingExternalMemo)    => set({ pendingExternalMemo }),
   setFocusLineIndex:      (focusLineIndex)      => set({ focusLineIndex }),
 }));

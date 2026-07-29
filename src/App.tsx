@@ -4,6 +4,7 @@ import { TextEditor } from './components/editor/TextEditor';
 import { ArchiveView } from './components/editor/ArchiveView';
 import { MemoEditor } from './components/editor/MemoEditor';
 import { InsightPanel } from './components/dashboard/InsightPanel';
+import { ExternalChangeDialog } from './components/editor/ExternalChangeDialog';
 import { useParser } from './hooks/useParser';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useAppStore } from './store/appStore';
@@ -36,6 +37,7 @@ function App() {
           </>
         )}
       </div>
+      <ExternalChangeDialog />
     </div>
   );
 }
