@@ -26,7 +26,15 @@ const TABS: { id: PanelTab; label: string }[] = [
 export function InsightPanel() {
   const parsedData    = useAppStore((s) => s.parsedData);
   const appActiveTab  = useAppStore((s) => s.activeTab);
+  const focusTaskLineIndex = useAppStore((s) => s.focusTaskLineIndex);
   const [activeTab, setActiveTab] = useState<PanelTab>('task');
+
+  // タスク行ジャンプ時に「タスク進捗」タブへ自動切替
+  useEffect(() => {
+    if (focusTaskLineIndex !== null) {
+      setActiveTab('task');
+    }
+  }, [focusTaskLineIndex]);
 
   // 過去タブでは「タスク進捗」「タスク期限」を非表示。選択中なら稼働サマリーへ退避
   const visibleTabs = appActiveTab === 'archive'

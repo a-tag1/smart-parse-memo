@@ -12,6 +12,8 @@ export function TextEditor() {
   const todayFileHandle = useAppStore((s) => s.todayFileHandle);
   const focusLineIndex    = useAppStore((s) => s.focusLineIndex);
   const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
+  const parsedData          = useAppStore((s) => s.parsedData);
+  const setFocusTaskLineIndex = useAppStore((s) => s.setFocusTaskLineIndex);
 
   const { saveToday }                  = useFileAccess();
   const { handleShiftEnter, handleAction } = useShortcuts();
@@ -129,6 +131,21 @@ export function TextEditor() {
     [handleAction],
   );
 
+  // クリック時: タスク行なら右パネルへジャンプ
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLTextAreaElement>) => {
+      if (!parsedData) return;
+      const ta = e.currentTarget;
+      const textBefore = ta.value.slice(0, ta.selectionStart);
+      const lineIndex = textBefore.split('\n').length - 1;
+      const allTasks = [...parsedData.tasks, ...parsedData.completedTasks];
+      if (allTasks.some((t) => t.lineIndex === lineIndex)) {
+        setFocusTaskLineIndex(lineIndex);
+      }
+    },
+    [parsedData, setFocusTaskLineIndex],
+  );
+
   // Tab キー（インデント）
   const handleKeyDownTab = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -205,6 +222,7 @@ export function TextEditor() {
             handleKeyDown(e);
             handleKeyDownTab(e);
           }}
+          onClick={handleClick}
           onScroll={syncScroll}
           spellCheck={false}
           className="absolute inset-0 w-full h-full bg-transparent text-transparent

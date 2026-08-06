@@ -47,6 +47,8 @@ interface AppState {
   setPendingExternalMemo:    (v: { content: string; lastModified: number } | null) => void;
   focusLineIndex:         number | null;
   setFocusLineIndex:      (idx: number | null) => void;
+  focusTaskLineIndex:     number | null;
+  setFocusTaskLineIndex:  (idx: number | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -70,6 +72,7 @@ export const useAppStore = create<AppState>((set) => ({
   pendingExternalToday: null,
   pendingExternalMemo:  null,
   focusLineIndex:         null,
+  focusTaskLineIndex:     null,
 
   setActiveTab:           (activeTab)           => set({ activeTab }),
   setRawText:             (rawText)             => set({ rawText }),
@@ -91,4 +94,5 @@ export const useAppStore = create<AppState>((set) => ({
   setPendingExternalToday:   (pendingExternalToday)   => set({ pendingExternalToday }),
   setPendingExternalMemo:    (pendingExternalMemo)    => set({ pendingExternalMemo }),
   setFocusLineIndex:      (focusLineIndex)      => set({ focusLineIndex }),
+  setFocusTaskLineIndex:  (focusTaskLineIndex)  => set({ focusTaskLineIndex }),
 }));

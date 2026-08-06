@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 import { toggleSubTaskDone, completeAndMoveTask, toggleTaskStar, toggleSubTaskStar } from '../../lib/parserEngine';
@@ -13,11 +13,36 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
   const rawText       = useAppStore((s) => s.rawText);
   const setRawText    = useAppStore((s) => s.setRawText);
   const activeTab     = useAppStore((s) => s.activeTab);
+  const focusTaskLineIndex    = useAppStore((s) => s.focusTaskLineIndex);
+  const setFocusTaskLineIndex = useAppStore((s) => s.setFocusTaskLineIndex);
   const { saveToday } = useFileAccess();
 
   const [showCompleted, setShowCompleted] = useState(false);
   const [showLowPriority, setShowLowPriority] = useState(false);
+  const [highlightedLineIndex, setHighlightedLineIndex] = useState<number | null>(null);
   const readonly = activeTab === 'archive';
+
+  // タスク行ジャンプ: 折りたたみセクションを展開→スクロール→ハイライト
+  useEffect(() => {
+    if (focusTaskLineIndex === null) return;
+    const inCompleted = completedTasks.some((t) => t.lineIndex === focusTaskLineIndex);
+    const inLow       = tasks.some((t) => t.lineIndex === focusTaskLineIndex && t.priority === 'low');
+    if (inCompleted) setShowCompleted(true);
+    if (inLow)       setShowLowPriority(true);
+    setFocusTaskLineIndex(null);
+    setHighlightedLineIndex(focusTaskLineIndex);
+  }, [focusTaskLineIndex, tasks, completedTasks, setFocusTaskLineIndex]);
+
+  useEffect(() => {
+    if (highlightedLineIndex === null) return;
+    const scrollTimer = setTimeout(() => {
+      document
+        .getElementById(`task-row-${highlightedLineIndex}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+    const clearTimer = setTimeout(() => setHighlightedLineIndex(null), 1500);
+    return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
+  }, [highlightedLineIndex]);
 
   const handleCompleteTask = useCallback(
     (task: Task) => {
@@ -103,6 +128,7 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                   key={task.id}
                   task={task}
                   readonly={readonly}
+                  highlighted={highlightedLineIndex === task.lineIndex}
                   onComplete={handleCompleteTask}
                   onToggleSubTask={handleToggleSubTask}
                   onToggleStar={handleToggleStar}
@@ -127,6 +153,7 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                         key={task.id}
                         task={task}
                         readonly={readonly}
+                        highlighted={highlightedLineIndex === task.lineIndex}
                         onComplete={handleCompleteTask}
                         onToggleSubTask={handleToggleSubTask}
                         onToggleStar={handleToggleStar}
@@ -159,6 +186,7 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                   task={task}
                   readonly={readonly}
                   faded
+                  highlighted={highlightedLineIndex === task.lineIndex}
                   onComplete={handleCompleteTask}
                   onToggleSubTask={handleToggleSubTask}
                   onToggleStar={handleToggleStar}
@@ -177,13 +205,14 @@ interface TaskRowProps {
   task:               Task;
   readonly:           boolean;
   faded?:             boolean;
+  highlighted?:       boolean;
   onComplete:         (task: Task) => void;
   onToggleSubTask:    (sub: SubTask) => void;
   onToggleStar:       (task: Task) => void;
   onToggleSubTaskStar:(sub: SubTask) => void;
 }
 
-function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar }: TaskRowProps) {
+function TaskRow({ task, readonly, faded = false, highlighted = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar }: TaskRowProps) {
   const isDone = task.status === 'done';
   const [subtasksOpen, setSubtasksOpen] = useState(task.starred);
   const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
@@ -193,7 +222,10 @@ function TaskRow({ task, readonly, faded = false, onComplete, onToggleSubTask, o
   }, [setFocusLineIndex, task.lineIndex]);
 
   return (
-    <div className={faded ? 'opacity-60' : ''}>
+    <div
+      id={`task-row-${task.lineIndex}`}
+      className={`rounded transition-colors duration-700 ${faded ? 'opacity-60' : ''} ${highlighted ? 'bg-amber-950/50' : ''}`}
+    >
       <div className="flex items-start gap-1.5">
         <button
           type="button"
