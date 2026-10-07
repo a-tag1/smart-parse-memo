@@ -16,6 +16,8 @@ export function MemoEditor() {
   const memoSaveStatus    = useAppStore((s) => s.memoSaveStatus);
   const setMemoSaveStatus = useAppStore((s) => s.setMemoSaveStatus);
   const setMemoText       = useAppStore((s) => s.setMemoText);
+  const pendingMemoLinkId = useAppStore((s) => s.pendingMemoLinkId);
+  const setPendingMemoLinkId = useAppStore((s) => s.setPendingMemoLinkId);
   const { saveMemo, openMemoFile } = useFileAccess();
 
   // ── ローカル編集テキスト（入力ラグ回避：storeには保存時のみ反映） ──
@@ -194,6 +196,26 @@ export function MemoEditor() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!pendingMemoLinkId) return;
+    if (!memoFileHandle) {
+      setPendingMemoLinkId(null);
+      return;
+    }
+
+    const lines = localTextRef.current.split('\n');
+    const target = `■${pendingMemoLinkId}`;
+    const lineIndex = lines.findIndex((line) => {
+      const trimmed = line.trimStart();
+      if (!trimmed.startsWith(target)) return false;
+      const nextCharacter = trimmed[target.length];
+      return nextCharacter === undefined || /[\s：:]/.test(nextCharacter);
+    });
+
+    if (lineIndex !== -1) jumpToSection(lineIndex);
+    setPendingMemoLinkId(null);
+  }, [pendingMemoLinkId, memoFileHandle, jumpToSection, setPendingMemoLinkId]);
 
   /** セクションを末尾に追記して保存 */
   const handleAddSection = useCallback(() => {

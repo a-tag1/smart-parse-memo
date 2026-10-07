@@ -49,6 +49,8 @@ interface AppState {
   setFocusLineIndex:      (idx: number | null) => void;
   focusTaskLineIndex:     number | null;
   setFocusTaskLineIndex:  (idx: number | null) => void;
+  pendingMemoLinkId:      string | null;
+  setPendingMemoLinkId:   (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -73,6 +75,7 @@ export const useAppStore = create<AppState>((set) => ({
   pendingExternalMemo:  null,
   focusLineIndex:         null,
   focusTaskLineIndex:     null,
+  pendingMemoLinkId:      null,
 
   setActiveTab:           (activeTab)           => set({ activeTab }),
   setRawText:             (rawText)             => set({ rawText }),
@@ -95,4 +98,5 @@ export const useAppStore = create<AppState>((set) => ({
   setPendingExternalMemo:    (pendingExternalMemo)    => set({ pendingExternalMemo }),
   setFocusLineIndex:      (focusLineIndex)      => set({ focusLineIndex }),
   setFocusTaskLineIndex:  (focusTaskLineIndex)  => set({ focusTaskLineIndex }),
+  setPendingMemoLinkId:   (pendingMemoLinkId)   => set({ pendingMemoLinkId }),
 }));

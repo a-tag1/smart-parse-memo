@@ -1,4 +1,5 @@
-﻿import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Link2 } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 import { toggleSubTaskDone, completeAndMoveTask, toggleTaskStar, toggleSubTaskStar } from '../../lib/parserEngine';
@@ -13,6 +14,10 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
   const rawText       = useAppStore((s) => s.rawText);
   const setRawText    = useAppStore((s) => s.setRawText);
   const activeTab     = useAppStore((s) => s.activeTab);
+  const memoText      = useAppStore((s) => s.memoText);
+  const memoFileHandle = useAppStore((s) => s.memoFileHandle);
+  const setActiveTab  = useAppStore((s) => s.setActiveTab);
+  const setPendingMemoLinkId = useAppStore((s) => s.setPendingMemoLinkId);
   const focusTaskLineIndex    = useAppStore((s) => s.focusTaskLineIndex);
   const setFocusTaskLineIndex = useAppStore((s) => s.setFocusTaskLineIndex);
   const { saveToday } = useFileAccess();
@@ -21,6 +26,19 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
   const [showLowPriority, setShowLowPriority] = useState(false);
   const [highlightedLineIndex, setHighlightedLineIndex] = useState<number | null>(null);
   const readonly = activeTab === 'archive';
+  const memoLinkIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const line of memoText.split('\n')) {
+      const match = line.trimStart().match(/^■(\d+-\d+(?:_[A-Za-z]+)?)(?=$|[\s：:])/);
+      if (match) ids.add(match[1]);
+    }
+    return ids;
+  }, [memoText]);
+
+  const handleMemoLink = useCallback((task: Task) => {
+    setPendingMemoLinkId(task.id);
+    setActiveTab('memo');
+  }, [setActiveTab, setPendingMemoLinkId]);
 
   // タスク行ジャンプ: 折りたたみセクションを展開→スクロール→ハイライト
   useEffect(() => {
@@ -133,6 +151,8 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                   onToggleSubTask={handleToggleSubTask}
                   onToggleStar={handleToggleStar}
                   onToggleSubTaskStar={handleToggleSubTaskStar}
+                  hasMemoLink={activeTab === 'today' && !!memoFileHandle && memoLinkIds.has(task.id)}
+                  onMemoLink={handleMemoLink}
                 />
               ))}
             </div>
@@ -158,6 +178,8 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                         onToggleSubTask={handleToggleSubTask}
                         onToggleStar={handleToggleStar}
                         onToggleSubTaskStar={handleToggleSubTaskStar}
+                        hasMemoLink={activeTab === 'today' && !!memoFileHandle && memoLinkIds.has(task.id)}
+                        onMemoLink={handleMemoLink}
                       />
                     ))}
                   </div>
@@ -191,6 +213,8 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
                   onToggleSubTask={handleToggleSubTask}
                   onToggleStar={handleToggleStar}
                   onToggleSubTaskStar={handleToggleSubTaskStar}
+                  hasMemoLink={activeTab === 'today' && !!memoFileHandle && memoLinkIds.has(task.id)}
+                  onMemoLink={handleMemoLink}
                 />
               ))}
             </div>
@@ -210,9 +234,11 @@ interface TaskRowProps {
   onToggleSubTask:    (sub: SubTask) => void;
   onToggleStar:       (task: Task) => void;
   onToggleSubTaskStar:(sub: SubTask) => void;
+  hasMemoLink:        boolean;
+  onMemoLink:         (task: Task) => void;
 }
 
-function TaskRow({ task, readonly, faded = false, highlighted = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar }: TaskRowProps) {
+function TaskRow({ task, readonly, faded = false, highlighted = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar, hasMemoLink, onMemoLink }: TaskRowProps) {
   const isDone = task.status === 'done';
   const [subtasksOpen, setSubtasksOpen] = useState(task.starred);
   const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
@@ -293,6 +319,17 @@ function TaskRow({ task, readonly, faded = false, highlighted = false, onComplet
             </button>
           )}
         </div>
+        {hasMemoLink && (
+          <button
+            type="button"
+            onClick={() => onMemoLink(task)}
+            title={`メモの ■${task.id} へ移動`}
+            aria-label={`メモの ■${task.id} へ移動`}
+            className="shrink-0 p-1 text-gray-500 hover:text-sky-300 transition-colors"
+          >
+            <Link2 size={14} />
+          </button>
+        )}
       </div>
 
       {task.subTasks.length > 0 && subtasksOpen && (
