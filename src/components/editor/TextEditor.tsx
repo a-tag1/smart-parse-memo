@@ -30,12 +30,14 @@ export function TextEditor() {
   // アクションメニュー状態
   const [menuOpen, setMenuOpen]         = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [highlightedLineIndex, setHighlightedLineIndex] = useState<number | null>(null);
 
   // 行ジャンプ: focusLineIndex が設定されたらその行へスクロール＆カーソル移動
   useEffect(() => {
     if (focusLineIndex === null) return;
     const ta = textareaRef.current;
     if (!ta) return;
+    setHighlightedLineIndex(focusLineIndex);
     const lines = rawText.split('\n');
     const charPos = lines
       .slice(0, focusLineIndex)
@@ -43,10 +45,16 @@ export function TextEditor() {
     ta.focus();
     ta.setSelectionRange(charPos, charPos);
     const lineHeight = 24; // leading-6
-    const targetScroll = focusLineIndex * lineHeight - ta.clientHeight / 3;
+    const targetScroll = focusLineIndex * lineHeight;
     ta.scrollTop = Math.max(0, targetScroll);
     setFocusLineIndex(null);
   }, [focusLineIndex, rawText, setFocusLineIndex]);
+
+  useEffect(() => {
+    if (highlightedLineIndex === null) return;
+    const timer = setTimeout(() => setHighlightedLineIndex(null), 1500);
+    return () => clearTimeout(timer);
+  }, [highlightedLineIndex]);
 
   // スクロール同期
   const syncScroll = useCallback(() => {
@@ -178,7 +186,14 @@ export function TextEditor() {
         aria-hidden
       >
         {lines.map((_, i) => (
-          <div key={i} className="leading-6 text-xs">
+          <div
+            key={i}
+            className={`leading-6 text-xs rounded-sm transition-colors duration-300 ${
+              highlightedLineIndex === i
+                ? 'text-yellow-100 bg-yellow-300/55 shadow-[0_0_18px_rgba(250,204,21,0.75)]'
+                : ''
+            }`}
+          >
             {i + 1}
           </div>
         ))}
@@ -201,7 +216,11 @@ export function TextEditor() {
             return (
               <div
                 key={i}
-                className={`leading-6 ${
+                className={`leading-6 rounded-sm transition-colors duration-300 ${
+                  highlightedLineIndex === i
+                    ? 'bg-yellow-300/40 shadow-[inset_4px_0_0_#fde047,0_0_20px_rgba(250,204,21,0.5)]'
+                    : ''
+                } ${
                   isH3 ? 'text-emerald-300 font-bold' :
                   isH4 ? 'text-yellow-400 font-semibold' :
                          'text-gray-200'

@@ -77,6 +77,7 @@ export function MemoEditor() {
   const [newSubsectionName, setNewSubsectionName] = useState('');
   const [showAddSubsection, setShowAddSubsection] = useState(false);
   const [expandedSectionLine, setExpandedSectionLine] = useState<number | null>(null);
+  const [highlightedLineIndex, setHighlightedLineIndex] = useState<number | null>(null);
 
   type SectionNode = { name: string; lineIndex: number; subsections: { name: string; lineIndex: number }[] };
   const sectionTree: SectionNode[] = [];
@@ -188,7 +189,7 @@ export function MemoEditor() {
       const ta = textareaRef.current;
       if (!ta) return;
       const LINE_HEIGHT = 24; // leading-6 = 1.5rem
-      ta.scrollTop = Math.max(0, lineIndex * LINE_HEIGHT - 16);
+      ta.scrollTop = Math.max(0, lineIndex * LINE_HEIGHT);
       const localLines = localTextRef.current.split('\n');
       const offset = localLines.slice(0, lineIndex).reduce((acc, l) => acc + l.length + 1, 0);
       ta.focus();
@@ -196,6 +197,12 @@ export function MemoEditor() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (highlightedLineIndex === null) return;
+    const timer = setTimeout(() => setHighlightedLineIndex(null), 2000);
+    return () => clearTimeout(timer);
+  }, [highlightedLineIndex]);
 
   useEffect(() => {
     if (!pendingMemoLinkId) return;
@@ -213,7 +220,10 @@ export function MemoEditor() {
       return nextCharacter === undefined || /[\s：:]/.test(nextCharacter);
     });
 
-    if (lineIndex !== -1) jumpToSection(lineIndex);
+    if (lineIndex !== -1) {
+      jumpToSection(lineIndex);
+      setHighlightedLineIndex(lineIndex);
+    }
     setPendingMemoLinkId(null);
   }, [pendingMemoLinkId, memoFileHandle, jumpToSection, setPendingMemoLinkId]);
 
@@ -417,7 +427,11 @@ export function MemoEditor() {
               return (
                 <div
                   key={i}
-                  className={`leading-6 ${
+                  className={`leading-6 rounded-sm transition-colors duration-300 ${
+                    highlightedLineIndex === i
+                      ? 'bg-yellow-300/45 text-yellow-100 shadow-[inset_4px_0_0_#fde047,0_0_20px_rgba(250,204,21,0.5)]'
+                      : ''
+                  } ${
                     isSection    ? 'text-emerald-300 font-bold' :
                     isSubsection ? 'text-sky-300 font-semibold' :
                     isBlackSq    ? 'text-amber-300 font-semibold' :

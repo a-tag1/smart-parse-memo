@@ -56,7 +56,7 @@ export function TaskProgress({ tasks, completedTasks }: Props) {
     const scrollTimer = setTimeout(() => {
       document
         .getElementById(`task-row-${highlightedLineIndex}`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
     const clearTimer = setTimeout(() => setHighlightedLineIndex(null), 1500);
     return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
@@ -250,7 +250,7 @@ function TaskRow({ task, readonly, faded = false, highlighted = false, onComplet
   return (
     <div
       id={`task-row-${task.lineIndex}`}
-      className={`rounded transition-colors duration-700 ${faded ? 'opacity-60' : ''} ${highlighted ? 'bg-amber-950/50' : ''}`}
+      className={`rounded transition-colors duration-300 ${faded ? 'opacity-60' : ''} ${highlighted ? 'bg-yellow-300/15 ring-1 ring-inset ring-yellow-300/60 shadow-[0_0_16px_rgba(250,204,21,0.25)]' : ''}`}
     >
       <div className="flex items-start gap-1.5">
         <button
