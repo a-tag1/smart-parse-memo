@@ -14,9 +14,26 @@ function App() {
   useFileWatcher(); // 外部変更を定期検知して自動リロード
 
   const activeTab = useAppStore((s) => s.activeTab);
+  const fontFamily = useAppStore((s) => s.fontFamily);
+  const fontStacks = {
+    system: 'system-ui, sans-serif',
+    sans: '"Yu Gothic", "Meiryo", sans-serif',
+    serif: '"Yu Mincho", "MS PMincho", serif',
+    mono: '"Cascadia Mono", "MS Gothic", monospace',
+    'yu-gothic': '"Yu Gothic", "YuGothic", sans-serif',
+    meiryo: 'Meiryo, "メイリオ", sans-serif',
+    'biz-ud-gothic': '"BIZ UDPGothic", "BIZ UDPゴシック", sans-serif',
+    'noto-sans-jp': '"Noto Sans JP", sans-serif',
+    'hiragino-kaku': '"Hiragino Kaku Gothic ProN", sans-serif',
+    'yu-mincho': '"Yu Mincho", "游明朝", serif',
+    'biz-ud-mincho': '"BIZ UDPMincho", "BIZ UDP明朝", serif',
+    'hiragino-mincho': '"Hiragino Mincho ProN", serif',
+    consolas: 'Consolas, monospace',
+    'ms-gothic': '"MS Gothic", "ＭＳ ゴシック", monospace',
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-white overflow-hidden">
+    <div className="flex flex-col h-screen bg-gray-950 text-white overflow-hidden" style={{ fontFamily: fontStacks[fontFamily] }}>
       <Header />
       <TabBar />
       <div className="flex flex-1 overflow-hidden">

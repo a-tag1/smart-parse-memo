@@ -117,7 +117,7 @@ export function TaskDeadline({ tasks }: Props) {
               <div className="space-y-1.5 pl-1">
                 {groupTasks.map((task) => (
                   <div key={task.id} className="flex items-start gap-1.5">
-                    <span className="text-[10px] font-mono text-gray-600 mt-0.5 shrink-0">
+                    <span className="text-[10px] text-gray-600 mt-0.5 shrink-0">
                       [{task.id}]
                     </span>
                     <div className="flex-1 min-w-0">
@@ -158,7 +158,7 @@ export function TaskDeadline({ tasks }: Props) {
             <div className="space-y-1.5 pl-1">
               {tasksWithoutDeadline.map((task) => (
                 <div key={task.id} className="flex items-start gap-1.5">
-                  <span className="text-[10px] font-mono text-gray-600 mt-0.5 shrink-0">
+                  <span className="text-[10px] text-gray-600 mt-0.5 shrink-0">
                     [{task.id}]
                   </span>
                   <div className="flex-1 min-w-0">

@@ -4,6 +4,21 @@ import type { ArchiveEntry } from '../lib/archiveEngine';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'disconnected' | 'reloaded';
 export type ActiveTab  = 'today' | 'archive' | 'memo';
+export type FontFamily =
+  | 'system'
+  | 'sans'
+  | 'serif'
+  | 'mono'
+  | 'yu-gothic'
+  | 'meiryo'
+  | 'biz-ud-gothic'
+  | 'noto-sans-jp'
+  | 'hiragino-kaku'
+  | 'yu-mincho'
+  | 'biz-ud-mincho'
+  | 'hiragino-mincho'
+  | 'consolas'
+  | 'ms-gothic';
 
 interface AppState {
   activeTab:            ActiveTab;
@@ -50,7 +65,9 @@ interface AppState {
   focusTaskLineIndex:     number | null;
   setFocusTaskLineIndex:  (idx: number | null) => void;
   pendingMemoLinkId:      string | null;
+  fontFamily:             FontFamily;
   setPendingMemoLinkId:   (id: string | null) => void;
+  setFontFamily:          (fontFamily: FontFamily) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -76,6 +93,7 @@ export const useAppStore = create<AppState>((set) => ({
   focusLineIndex:         null,
   focusTaskLineIndex:     null,
   pendingMemoLinkId:      null,
+  fontFamily:             (localStorage.getItem('spm_font_family') as FontFamily | null) ?? 'system',
 
   setActiveTab:           (activeTab)           => set({ activeTab }),
   setRawText:             (rawText)             => set({ rawText }),
@@ -99,4 +117,8 @@ export const useAppStore = create<AppState>((set) => ({
   setFocusLineIndex:      (focusLineIndex)      => set({ focusLineIndex }),
   setFocusTaskLineIndex:  (focusTaskLineIndex)  => set({ focusTaskLineIndex }),
   setPendingMemoLinkId:   (pendingMemoLinkId)   => set({ pendingMemoLinkId }),
+  setFontFamily:          (fontFamily) => {
+    localStorage.setItem('spm_font_family', fontFamily);
+    set({ fontFamily });
+  },
 }));

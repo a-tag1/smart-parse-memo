@@ -177,7 +177,7 @@ export function TextEditor() {
   const lines = rawText.split('\n');
 
   return (
-    <div className="flex h-full overflow-hidden font-mono text-sm bg-gray-950">
+    <div className="flex h-full overflow-hidden text-sm bg-gray-950">
       {/* 行番号 */}
       <div
         ref={lineNumbersRef}

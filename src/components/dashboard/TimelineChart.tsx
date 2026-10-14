@@ -99,7 +99,7 @@ function ScheduleList({ items, nowMin, dotColor }: ScheduleListProps) {
               }`}
             />
             <span
-              className={`shrink-0 font-mono tabular-nums ${
+              className={`shrink-0 tabular-nums ${
                 active ? 'text-amber-300' : 'text-gray-500'
               }`}
             >

@@ -63,7 +63,7 @@ export function ArchiveView() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gray-950 font-mono text-sm">
+    <div className="flex flex-col h-full overflow-hidden bg-gray-950 text-sm">
       {/* 日付リスト（新しい日付が上） */}
       <div className="shrink-0 overflow-y-auto border-b border-gray-800 bg-gray-900 max-h-52">
         {archiveEntries

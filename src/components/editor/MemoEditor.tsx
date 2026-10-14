@@ -262,7 +262,7 @@ export function MemoEditor() {
   }, [newSubsectionName, saveMemo]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden font-mono text-sm bg-gray-950">
+    <div className="flex flex-col h-full overflow-hidden text-sm bg-gray-950">
 
       {/* ── セクションナビゲーションバー ── */}
       <div className="shrink-0 bg-gray-900 border-b border-gray-800">

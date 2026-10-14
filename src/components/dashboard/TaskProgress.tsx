@@ -273,7 +273,7 @@ function TaskRow({ task, readonly, faded = false, highlighted = false, onComplet
           )}
         </button>
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-mono text-gray-500 mr-1">[{task.id}]</span>
+          <span className="text-sm text-gray-500 mr-1">[{task.id}]</span>
           {task.project && (
             <span className="text-xs text-blue-400 mr-1">{task.project}:</span>
           )}
