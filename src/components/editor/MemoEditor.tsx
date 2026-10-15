@@ -9,6 +9,38 @@ import type { ActionType } from './ActionMenu';
 const SECTION_RE = /^={4}(?!=)\s+(.+?)\s+={4}(?!=)\s*$/;
 /** ===== 名前 ===== 形式のサブセクション見出し */
 const SUBSECTION_RE = /^={5}\s+(.+?)\s+={5}\s*$/;
+const URL_RE = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+
+function renderLineWithLinks(line: string) {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of line.matchAll(URL_RE)) {
+    const matchedUrl = match[0];
+    const trailingPunctuation = matchedUrl.match(/[.,!?;:)\]}]+$/)?.[0] ?? '';
+    const url = matchedUrl.slice(0, matchedUrl.length - trailingPunctuation.length);
+    const startIndex = match.index ?? 0;
+    if (!url) continue;
+
+    parts.push(line.slice(lastIndex, startIndex));
+    parts.push(
+      <a
+        key={startIndex}
+        href={url.startsWith('www.') ? `https://${url}` : url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sky-400 underline underline-offset-2 pointer-events-auto hover:text-sky-300"
+      >
+        {url}
+      </a>,
+    );
+    parts.push(trailingPunctuation);
+    lastIndex = startIndex + matchedUrl.length;
+  }
+
+  parts.push(line.slice(lastIndex));
+  return parts;
+}
 
 export function MemoEditor() {
   const memoText          = useAppStore((s) => s.memoText);   // 保存済みテキスト（ハイライト・セクションナビ用）
@@ -438,7 +470,7 @@ export function MemoEditor() {
                                    'text-gray-200'
                   }`}
                 >
-                  {line || '\u00a0'}
+                  {line ? renderLineWithLinks(line) : '\u00a0'}
                 </div>
               );
             })}
