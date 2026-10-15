@@ -29,7 +29,7 @@ function renderLineWithLinks(line: string) {
         href={url.startsWith('www.') ? `https://${url}` : url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-sky-400 underline underline-offset-2 pointer-events-auto hover:text-sky-300"
+        className="text-sky-400 underline underline-offset-2 pointer-events-auto cursor-pointer hover:text-sky-300"
       >
         {url}
       </a>,
@@ -447,7 +447,7 @@ export function MemoEditor() {
           <div
             ref={highlightRef}
             aria-hidden
-            className="absolute inset-0 px-4 py-4 leading-6 overflow-hidden pointer-events-none
+            className="absolute inset-0 z-10 px-4 py-4 leading-6 overflow-hidden pointer-events-none
                        select-none whitespace-pre-wrap break-all"
             style={{ paddingRight: 16 }}  // useLayoutEffect で上書きされる
           >
@@ -485,7 +485,7 @@ export function MemoEditor() {
             onScroll={syncScroll}
             spellCheck={false}
             placeholder={'メモを入力...\n\n==== セクション名 ==== でセクションを作成できます'}
-            className="absolute inset-0 w-full h-full bg-transparent text-transparent
+            className="absolute inset-0 z-0 w-full h-full bg-transparent text-transparent
                        caret-blue-400 px-4 py-4 resize-none outline-none leading-6 overflow-auto
                        break-all [scrollbar-gutter:stable]"
           />
