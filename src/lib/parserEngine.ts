@@ -297,6 +297,10 @@ export function completeAndMoveTask(rawText: string, task: Task): string {
   const taskBlock  = lines.slice(blockStart, blockEnd + 1);
   lines.splice(blockStart, blockEnd - blockStart + 1);
 
+  if (lines[blockStart - 1]?.trim() === '' && lines[blockStart]?.trim() === '') {
+    lines.splice(blockStart, 1);
+  }
+
   const completedRe = /^###\s*[４4][\．.]?\s*当月完了タスク/;
   let sectionIdx = lines.findIndex(l => completedRe.test(l.trim()));
 
