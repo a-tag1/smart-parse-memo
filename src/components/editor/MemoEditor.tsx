@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect, useDeferredValue, useLayoutEffect } from 'react';
+import { memo, useRef, useCallback, useState, useEffect, useDeferredValue, useLayoutEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useFileAccess } from '../../hooks/useFileAccess';
 import { useShortcuts } from '../../hooks/useShortcuts';
@@ -41,6 +41,36 @@ function renderLineWithLinks(line: string) {
   parts.push(line.slice(lastIndex));
   return parts;
 }
+
+const HighlightLine = memo(function HighlightLine({
+  line,
+  highlighted,
+}: {
+  line: string;
+  highlighted: boolean;
+}) {
+  const trimmed = line.trim();
+  const isSection = SECTION_RE.test(trimmed);
+  const isSubsection = SUBSECTION_RE.test(trimmed);
+  const isBlackSq = trimmed.startsWith('■');
+
+  return (
+    <div
+      className={`leading-6 rounded-sm transition-colors duration-300 ${
+        highlighted
+          ? 'bg-yellow-300/45 text-yellow-100 shadow-[inset_4px_0_0_#fde047,0_0_20px_rgba(250,204,21,0.5)]'
+          : ''
+      } ${
+        isSection    ? 'text-emerald-300 font-bold' :
+        isSubsection ? 'text-sky-300 font-semibold' :
+        isBlackSq    ? 'text-amber-300 font-semibold' :
+                       'text-gray-200'
+      }`}
+    >
+      {line ? renderLineWithLinks(line) : '\u00a0'}
+    </div>
+  );
+});
 
 export function MemoEditor() {
   const memoText          = useAppStore((s) => s.memoText);   // 保存済みテキスト（ハイライト・セクションナビ用）
@@ -99,10 +129,9 @@ export function MemoEditor() {
   }, [setMemoText]);
 
   // ハイライト層はカーソルと常に同期させるため localText を直接使用
-  const displayLines = localText.split('\n');
   // セクションナビはやや遅延してもよいので deferredValue で描画負荷を軽減
   const deferredText  = useDeferredValue(localText);
-  const deferredLines = deferredText.split('\n');
+  const deferredLines = useMemo(() => deferredText.split('\n'), [deferredText]);
 
   const [newSectionName, setNewSectionName] = useState('');
   const [showAddSection, setShowAddSection] = useState(false);
@@ -112,17 +141,21 @@ export function MemoEditor() {
   const [highlightedLineIndex, setHighlightedLineIndex] = useState<number | null>(null);
 
   type SectionNode = { name: string; lineIndex: number; subsections: { name: string; lineIndex: number }[] };
-  const sectionTree: SectionNode[] = [];
-  deferredLines.forEach((line, i) => {
-    const trimmed = line.trim();
-    const sm  = trimmed.match(SECTION_RE);
-    const ssm = trimmed.match(SUBSECTION_RE);
-    if (sm) {
-      sectionTree.push({ name: sm[1], lineIndex: i, subsections: [] });
-    } else if (ssm && sectionTree.length > 0) {
-      sectionTree[sectionTree.length - 1].subsections.push({ name: ssm[1], lineIndex: i });
-    }
-  });
+  const sectionTree = useMemo(() => {
+    const tree: SectionNode[] = [];
+    deferredLines.forEach((line, i) => {
+      const trimmed = line.trim();
+      const sm  = trimmed.match(SECTION_RE);
+      const ssm = trimmed.match(SUBSECTION_RE);
+      if (sm) {
+        tree.push({ name: sm[1], lineIndex: i, subsections: [] });
+      } else if (ssm && tree.length > 0) {
+        tree[tree.length - 1].subsections.push({ name: ssm[1], lineIndex: i });
+      }
+    });
+    return tree;
+  }, [deferredLines]);
+  const displayLines = localText.split('\n');
   const expandedNode = expandedSectionLine !== null
     ? (sectionTree.find(s => s.lineIndex === expandedSectionLine) ?? null)
     : null;
@@ -134,13 +167,18 @@ export function MemoEditor() {
     }
   }, []);
 
-  // スクロールバー幅の同期
+  // スクロールバー幅の同期（初期表示とウィンドウリサイズ時のみ）
   useLayoutEffect(() => {
     const ta = textareaRef.current;
     const hl = highlightRef.current;
     if (!ta || !hl) return;
-    hl.style.paddingRight = `${ta.offsetWidth - ta.clientWidth + 16}px`; // 16 = px-4
-  });
+    const syncScrollbarWidth = () => {
+      hl.style.paddingRight = `${ta.offsetWidth - ta.clientWidth + 16}px`; // 16 = px-4
+    };
+    syncScrollbarWidth();
+    window.addEventListener('resize', syncScrollbarWidth);
+    return () => window.removeEventListener('resize', syncScrollbarWidth);
+  }, [memoFileHandle]);
 
   /** テキスト変更（ローカルstateのみ更新。storeは保存時に更新） */
   const handleChange = useCallback(
@@ -451,29 +489,9 @@ export function MemoEditor() {
                        select-none whitespace-pre-wrap break-all"
             style={{ paddingRight: 16 }}  // useLayoutEffect で上書きされる
           >
-            {displayLines.map((line, i) => {
-              const trimmed     = line.trim();
-              const isSection    = SECTION_RE.test(trimmed);
-              const isSubsection = SUBSECTION_RE.test(trimmed);
-              const isBlackSq    = trimmed.startsWith('■');
-              return (
-                <div
-                  key={i}
-                  className={`leading-6 rounded-sm transition-colors duration-300 ${
-                    highlightedLineIndex === i
-                      ? 'bg-yellow-300/45 text-yellow-100 shadow-[inset_4px_0_0_#fde047,0_0_20px_rgba(250,204,21,0.5)]'
-                      : ''
-                  } ${
-                    isSection    ? 'text-emerald-300 font-bold' :
-                    isSubsection ? 'text-sky-300 font-semibold' :
-                    isBlackSq    ? 'text-amber-300 font-semibold' :
-                                   'text-gray-200'
-                  }`}
-                >
-                  {line ? renderLineWithLinks(line) : '\u00a0'}
-                </div>
-              );
-            })}
+            {displayLines.map((line, i) => (
+              <HighlightLine key={i} line={line} highlighted={highlightedLineIndex === i} />
+            ))}
           </div>
 
           {/* テキストエリア（ローカルstateで管理） */}
