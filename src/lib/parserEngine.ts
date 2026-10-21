@@ -271,9 +271,15 @@ export function toggleSubTaskDone(rawText: string, subTask: SubTask): string {
 
   if (subTask.done) {
     lines[subTask.lineIndex] = line.replace(/^(\s*)済\(\d+\/\d+\)\s*/, '$1');
+    if (subTask.starred) {
+      lines[subTask.lineIndex] = lines[subTask.lineIndex].replace('★', '');
+    }
   } else {
     const today = getTodayMarkDate();
     lines[subTask.lineIndex] = line.replace(/^(\s*)([・•])/, `$1済(${today})$2`);
+    if (subTask.starred) {
+      lines[subTask.lineIndex] = lines[subTask.lineIndex].replace('★', '');
+    }
   }
   return lines.join('\n');
 }
@@ -286,9 +292,16 @@ export function completeAndMoveTask(rawText: string, task: Task): string {
   const lines = rawText.split('\n');
   const today = getTodayMarkDate();
 
-  if (task.status !== 'done') {
-    const mainLine = lines[task.lineIndex] ?? '';
-    lines[task.lineIndex] = `${mainLine.trimEnd()} 済(${today})`;
+  let mainLine = lines[task.lineIndex] ?? '';
+  if (task.starred) mainLine = mainLine.replace('★', '');
+  if (task.status !== 'done') mainLine = `${mainLine.trimEnd()} 済(${today})`;
+  lines[task.lineIndex] = mainLine;
+
+  for (const subTask of task.subTasks) {
+    if (subTask.starred) {
+      const line = lines[subTask.lineIndex];
+      if (line !== undefined) lines[subTask.lineIndex] = line.replace('★', '');
+    }
   }
 
   const allIndices = [task.lineIndex, ...task.subTasks.map(s => s.lineIndex)].sort((a, b) => a - b);
