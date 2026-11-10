@@ -27,6 +27,7 @@ export function useFileAccess() {
   const setTodayFileHandle    = useAppStore((s) => s.setTodayFileHandle);
   const setArchiveFileHandle  = useAppStore((s) => s.setArchiveFileHandle);
   const setArchiveEntries     = useAppStore((s) => s.setArchiveEntries);
+  const setArchiveOpenStatus  = useAppStore((s) => s.setArchiveOpenStatus);
   const setSaveStatus         = useAppStore((s) => s.setSaveStatus);
   const setStoredTodayName    = useAppStore((s) => s.setStoredTodayName);
   const setStoredArchiveName  = useAppStore((s) => s.setStoredArchiveName);
@@ -81,26 +82,36 @@ export function useFileAccess() {
 
   /** archive_YYYY_MM.txt を開いてエントリを読み込む */
   const openArchiveFile = useCallback(async () => {
+    let stage = 'ファイル選択';
     try {
+      setArchiveOpenStatus('ファイル選択待ち');
       const [handle] = await window.showOpenFilePicker({
         types: [{ description: 'アーカイブ（テキスト）', accept: { 'text/plain': ['.txt'] } }],
         multiple: false,
       });
 
+      stage = 'ファイル情報取得';
+      setArchiveOpenStatus(`${handle.name}: ファイル情報取得中`);
       const file = await handle.getFile();
+      stage = '本文読み込み';
+      setArchiveOpenStatus(`${handle.name}: 本文読み込み中`);
       const text = await file.text();
 
+      stage = 'アーカイブ解析';
+      const entries = parseArchive(text);
       setArchiveFileHandle(handle);
-      setArchiveEntries(parseArchive(text));
+      setArchiveEntries(entries);
+      stage = '接続情報保存';
       await saveHandle(HANDLE_KEY_ARCHIVE, handle);
       localStorage.setItem(LS_KEY_ARCHIVE_NAME, handle.name);
       setStoredArchiveName(handle.name);
+      setArchiveOpenStatus(null);
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        console.error('アーカイブファイルを開けませんでした:', err);
-      }
+      const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      setArchiveOpenStatus(`${stage}が完了しませんでした。${detail}`);
+      console.error(`アーカイブファイルを開けませんでした（${stage}）:`, err);
     }
-  }, [setArchiveFileHandle, setArchiveEntries, setStoredArchiveName]);
+  }, [setArchiveFileHandle, setArchiveEntries, setArchiveOpenStatus, setStoredArchiveName]);
 
   /** memo_archive.txt を開く */
   const openMemoFile = useCallback(async () => {
