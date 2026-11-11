@@ -8,6 +8,9 @@ export function Header() {
   const activeTab         = useAppStore((s) => s.activeTab);
   const todayFileHandle   = useAppStore((s) => s.todayFileHandle);
   const archiveFileHandle = useAppStore((s) => s.archiveFileHandle);
+  const todayOpenStatus   = useAppStore((s) => s.todayOpenStatus);
+  const archiveOpenStatus = useAppStore((s) => s.archiveOpenStatus);
+  const memoOpenStatus    = useAppStore((s) => s.memoOpenStatus);
   const memoFileHandle    = useAppStore((s) => s.memoFileHandle);
   const saveStatus        = useAppStore((s) => s.saveStatus);
   const memoSaveStatus    = useAppStore((s) => s.memoSaveStatus);
@@ -40,6 +43,9 @@ export function Header() {
   const handleOpen  = activeTab === 'today' ? openTodayFile
                     : activeTab === 'archive' ? openArchiveFile
                     : openMemoFile;
+  const openStatus = activeTab === 'today' ? todayOpenStatus
+                   : activeTab === 'archive' ? archiveOpenStatus
+                   : memoOpenStatus;
 
   return (
     <>
@@ -88,6 +94,12 @@ export function Header() {
           </button>
         </div>
       </header>
+
+      {openStatus && (
+        <p role="status" className="shrink-0 border-b border-gray-800 bg-gray-900 px-4 py-2 text-sm text-amber-400 whitespace-pre-wrap break-words">
+          {openStatus}
+        </p>
+      )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </>

@@ -29,6 +29,8 @@ interface AppState {
   archiveEntries:       ArchiveEntry[];
   selectedArchiveDate:  string | null;
   archiveOpenStatus:    string | null;
+  todayOpenStatus:      string | null;
+  memoOpenStatus:       string | null;
   saveStatus:           SaveStatus;
   storedTodayName:      string | null;
   storedArchiveName:    string | null;
@@ -50,6 +52,8 @@ interface AppState {
   setArchiveEntries:      (entries: ArchiveEntry[]) => void;
   setSelectedArchiveDate: (date: string | null) => void;
   setArchiveOpenStatus:   (status: string | null) => void;
+  setTodayOpenStatus:     (status: string | null) => void;
+  setMemoOpenStatus:      (status: string | null) => void;
   setSaveStatus:          (status: SaveStatus) => void;
   setStoredTodayName:     (name: string | null) => void;
   setStoredArchiveName:   (name: string | null) => void;
@@ -81,6 +85,8 @@ export const useAppStore = create<AppState>((set) => ({
   archiveEntries:       [],
   selectedArchiveDate:  null,
   archiveOpenStatus:    null,
+  todayOpenStatus:      null,
+  memoOpenStatus:       null,
   saveStatus:           'disconnected',
   storedTodayName:      localStorage.getItem('spm_today_name'),
   storedArchiveName:    localStorage.getItem('spm_archive_name'),
@@ -106,6 +112,8 @@ export const useAppStore = create<AppState>((set) => ({
   setArchiveEntries:      (archiveEntries)      => set({ archiveEntries }),
   setSelectedArchiveDate: (selectedArchiveDate) => set({ selectedArchiveDate }),
   setArchiveOpenStatus:   (archiveOpenStatus)   => set({ archiveOpenStatus }),
+  setTodayOpenStatus:     (todayOpenStatus)     => set({ todayOpenStatus }),
+  setMemoOpenStatus:      (memoOpenStatus)      => set({ memoOpenStatus }),
   setSaveStatus:          (saveStatus)          => set({ saveStatus }),
   setStoredTodayName:     (storedTodayName)     => set({ storedTodayName }),
   setStoredArchiveName:   (storedArchiveName)   => set({ storedArchiveName }),

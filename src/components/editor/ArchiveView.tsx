@@ -9,7 +9,6 @@ type ViewMode = 'daily' | 'monthly-completed';
 /** 過去タブ用の左ペイン：日付リスト + 選択エントリの読み取り専用表示 */
 export function ArchiveView() {
   const archiveFileHandle = useAppStore((s) => s.archiveFileHandle);
-  const archiveOpenStatus = useAppStore((s) => s.archiveOpenStatus);
   const { openArchiveFile } = useFileAccess();
   const { archiveEntries, selectedArchiveDate, selectDate } = useArchive();
 
@@ -50,11 +49,6 @@ export function ArchiveView() {
         >
           アーカイブを開く（archive_YYYY_MM.txt）
         </button>
-        {archiveOpenStatus && (
-          <p role="status" className="w-full max-w-md px-4 text-sm text-amber-400 whitespace-pre-wrap break-words">
-            {archiveOpenStatus}
-          </p>
-        )}
       </div>
     );
   }

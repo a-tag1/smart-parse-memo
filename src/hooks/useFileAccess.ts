@@ -28,6 +28,8 @@ export function useFileAccess() {
   const setArchiveFileHandle  = useAppStore((s) => s.setArchiveFileHandle);
   const setArchiveEntries     = useAppStore((s) => s.setArchiveEntries);
   const setArchiveOpenStatus  = useAppStore((s) => s.setArchiveOpenStatus);
+  const setTodayOpenStatus    = useAppStore((s) => s.setTodayOpenStatus);
+  const setMemoOpenStatus     = useAppStore((s) => s.setMemoOpenStatus);
   const setSaveStatus         = useAppStore((s) => s.setSaveStatus);
   const setStoredTodayName    = useAppStore((s) => s.setStoredTodayName);
   const setStoredArchiveName  = useAppStore((s) => s.setStoredArchiveName);
@@ -47,14 +49,21 @@ export function useFileAccess() {
 
   /** daily_today.txt を開く。日付不一致の場合は通知を出す */
   const openTodayFile = useCallback(async () => {
+    let stage = 'ファイル選択';
     try {
+      setTodayOpenStatus('ファイル選択待ち');
       const [handle] = await window.showOpenFilePicker({
         types: [{ description: 'テキスト / Markdown', accept: { 'text/plain': ['.txt', '.md'] } }],
         multiple: false,
       });
 
+      stage = 'ファイル情報取得';
+      setTodayOpenStatus(`${handle.name}: ファイル情報取得中`);
       const file  = await handle.getFile();
+      stage = '本文読み込み';
+      setTodayOpenStatus(`${handle.name}: 本文読み込み中`);
       const text  = (await file.text()).replace(/\r\n/g, '\n');
+      stage = '日付確認';
       const today = getTodayDate();
       const fileDate = extractDateFromText(text);
 
@@ -62,10 +71,12 @@ export function useFileAccess() {
       setRawText(text);
       setTodayLastModified(file.lastModified);
       setSaveStatus('saved');
+      stage = '接続情報保存';
       await saveHandle(HANDLE_KEY_TODAY, handle);
       localStorage.setItem(LS_KEY_TODAY_NAME, handle.name);
       setStoredTodayName(handle.name);
       setPendingReconnect(false);
+      setTodayOpenStatus(null);
 
       if (fileDate && fileDate !== today) {
         window.alert(
@@ -74,11 +85,11 @@ export function useFileAccess() {
         );
       }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        console.error('ファイルを開けませんでした:', err);
-      }
+      const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      setTodayOpenStatus(`${stage}が完了しませんでした。${detail}`);
+      console.error(`本日ファイルを開けませんでした（${stage}）:`, err);
     }
-  }, [setRawText, setTodayFileHandle, setSaveStatus, setStoredTodayName, setPendingReconnect, setTodayLastModified]);
+  }, [setRawText, setTodayFileHandle, setSaveStatus, setStoredTodayName, setPendingReconnect, setTodayLastModified, setTodayOpenStatus]);
 
   /** archive_YYYY_MM.txt を開いてエントリを読み込む */
   const openArchiveFile = useCallback(async () => {
@@ -115,26 +126,34 @@ export function useFileAccess() {
 
   /** memo_archive.txt を開く */
   const openMemoFile = useCallback(async () => {
+    let stage = 'ファイル選択';
     try {
+      setMemoOpenStatus('ファイル選択待ち');
       const [handle] = await window.showOpenFilePicker({
         types: [{ description: 'メモ（テキスト）', accept: { 'text/plain': ['.txt'] } }],
         multiple: false,
       });
+      stage = 'ファイル情報取得';
+      setMemoOpenStatus(`${handle.name}: ファイル情報取得中`);
       const file = await handle.getFile();
+      stage = '本文読み込み';
+      setMemoOpenStatus(`${handle.name}: 本文読み込み中`);
       const text = (await file.text()).replace(/\r\n/g, '\n');
       setMemoFileHandle(handle);
       setMemoText(text);
       setMemoLastModified(file.lastModified);
       setMemoSaveStatus('saved');
+      stage = '接続情報保存';
       await saveHandle(HANDLE_KEY_MEMO, handle);
       localStorage.setItem(LS_KEY_MEMO_NAME, handle.name);
       setStoredMemoName(handle.name);
+      setMemoOpenStatus(null);
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        console.error('メモファイルを開けませんでした:', err);
-      }
+      const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      setMemoOpenStatus(`${stage}が完了しませんでした。${detail}`);
+      console.error(`メモファイルを開けませんでした（${stage}）:`, err);
     }
-  }, [setMemoFileHandle, setMemoText, setMemoSaveStatus, setStoredMemoName, setMemoLastModified]);
+  }, [setMemoFileHandle, setMemoText, setMemoSaveStatus, setStoredMemoName, setMemoLastModified, setMemoOpenStatus]);
 
   /** memo_archive.txt に保存する */
   const saveMemo = useCallback(
