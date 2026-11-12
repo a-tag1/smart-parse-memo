@@ -240,12 +240,68 @@ interface TaskRowProps {
 
 function TaskRow({ task, readonly, faded = false, highlighted = false, onComplete, onToggleSubTask, onToggleStar, onToggleSubTaskStar, hasMemoLink, onMemoLink }: TaskRowProps) {
   const isDone = task.status === 'done';
-  const [subtasksOpen, setSubtasksOpen] = useState(task.starred);
+  const [completedSubTasksOpen, setCompletedSubTasksOpen] = useState(false);
+  const incompleteSubTasks = task.subTasks.filter((subTask) => !subTask.done);
+  const completedSubTasks = task.subTasks.filter((subTask) => subTask.done);
   const setFocusLineIndex = useAppStore((s) => s.setFocusLineIndex);
 
   const handleTitleDoubleClick = useCallback(() => {
     setFocusLineIndex(task.lineIndex);
   }, [setFocusLineIndex, task.lineIndex]);
+
+  const renderSubTask = (subTask: SubTask, index: number) => (
+    <div key={index} className="flex items-center gap-1.5">
+      <button
+        type="button"
+        disabled={readonly}
+        onClick={() => onToggleSubTask(subTask)}
+        title={subTask.done ? '未完了に戻す' : '完了にする'}
+        className={`w-3 h-3 rounded border flex items-center justify-center shrink-0 transition-colors ${
+          subTask.done
+            ? 'bg-emerald-800 border-emerald-600'
+            : readonly
+            ? 'border-gray-700 cursor-default'
+            : 'border-gray-600 hover:border-emerald-400 hover:bg-emerald-900/30 cursor-pointer'
+        }`}
+      >
+        {subTask.done && (
+          <svg className="w-1.5 h-1.5 text-emerald-300" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </button>
+      {(() => {
+        const isHighlight = subTask.starred;
+        if (isHighlight) {
+          return (
+            <span className={`text-sm font-bold px-1 rounded ${subTask.done ? 'line-through text-blue-800 bg-blue-950' : 'text-blue-200 bg-blue-900'}`}>
+              {subTask.text}
+              {subTask.doneDate && <span className="font-normal text-blue-700 ml-1">({subTask.doneDate})</span>}
+            </span>
+          );
+        }
+        return (
+          <span className={subTask.done ? 'text-xs line-through text-gray-600' : 'text-sm text-400'}>
+            {subTask.text}
+            {subTask.doneDate && <span className="text-gray-600 ml-1">({subTask.doneDate})</span>}
+          </span>
+        );
+      })()}
+      <button
+        type="button"
+        disabled={readonly}
+        onClick={() => onToggleSubTaskStar(subTask)}
+        title={subTask.starred ? '★を解除' : '★をつける'}
+        className={`text-xs leading-none transition-colors ${
+          subTask.starred
+            ? 'text-blue-400'  + (readonly ? '' : ' hover:text-blue-300 cursor-pointer')
+            : 'text-gray-700' + (readonly ? '' : ' hover:text-blue-400 cursor-pointer')
+        }`}
+      >
+        {subTask.starred ? '★' : '☆'}
+      </button>
+    </div>
+  );
 
   return (
     <div
@@ -258,7 +314,7 @@ function TaskRow({ task, readonly, faded = false, highlighted = false, onComplet
           disabled={readonly || isDone}
           onClick={() => onComplete(task)}
           title={isDone ? '完了済み' : 'タスクを完了にして移動'}
-          className={`mt-0.5 w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+          className={`mt-1 w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
             isDone
               ? 'bg-emerald-700 border-emerald-600 cursor-default'
               : readonly
@@ -308,16 +364,6 @@ function TaskRow({ task, readonly, faded = false, highlighted = false, onComplet
           >
             {task.starred ? '★' : '☆'}
           </button>
-          {task.subTasks.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSubtasksOpen((v) => !v)}
-              className="ml-1.5 text-[10px] text-gray-600 hover:text-gray-400 inline-flex items-center gap-0.5 transition-colors"
-            >
-              <span>{subtasksOpen ? '▼' : '▶'}</span>
-              <span>{task.subTasks.length}件</span>
-            </button>
-          )}
         </div>
         {hasMemoLink && (
           <button
@@ -332,62 +378,23 @@ function TaskRow({ task, readonly, faded = false, highlighted = false, onComplet
         )}
       </div>
 
-      {task.subTasks.length > 0 && subtasksOpen && (
+      {task.subTasks.length > 0 && (
         <div className="ml-5 mt-0.5 space-y-0.5">
-          {task.subTasks.map((sub, i) => (
-            <div key={i} className="flex items-center gap-1.5">
+          {completedSubTasks.length > 0 && (
+            <>
               <button
                 type="button"
-                disabled={readonly}
-                onClick={() => onToggleSubTask(sub)}
-                title={sub.done ? '未完了に戻す' : '完了にする'}
-                className={`w-3 h-3 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                  sub.done
-                    ? 'bg-emerald-800 border-emerald-600'
-                    : readonly
-                    ? 'border-gray-700 cursor-default'
-                    : 'border-gray-600 hover:border-emerald-400 hover:bg-emerald-900/30 cursor-pointer'
-                }`}
+                aria-expanded={completedSubTasksOpen}
+                onClick={() => setCompletedSubTasksOpen((open) => !open)}
+                className="text-[10px] text-gray-600 hover:text-gray-400 inline-flex items-center gap-0.5 transition-colors"
               >
-                {sub.done && (
-                  <svg className="w-1.5 h-1.5 text-emerald-300" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
+                <span>{completedSubTasksOpen ? '▼' : '▶'}</span>
+                <span>完了（{completedSubTasks.length}件）</span>
               </button>
-              {(() => {
-                const isHighlight = sub.starred;
-                if (isHighlight) {
-                  return (
-                    <span className={`text-sm font-bold px-1 rounded ${sub.done ? 'line-through text-blue-800 bg-blue-950' : 'text-blue-200 bg-blue-900'}`}>
-                      {sub.text}
-                      {sub.doneDate && <span className="font-normal text-blue-700 ml-1">({sub.doneDate})</span>}
-                    </span>
-                  );
-                }
-                return (
-                  <span className={sub.done ? 'text-xs line-through text-gray-600' : 'text-sm text-400'}>
-                    {sub.text}
-                    {sub.doneDate && <span className="text-gray-600 ml-1">({sub.doneDate})</span>}
-                  </span>
-                );
-              })()}
-              {/* サブタスク ★ トグル */}
-              <button
-                type="button"
-                disabled={readonly}
-                onClick={() => onToggleSubTaskStar(sub)}
-                title={sub.starred ? '★を解除' : '★をつける'}
-                className={`text-xs leading-none transition-colors ${
-                  sub.starred
-                    ? 'text-blue-400'  + (readonly ? '' : ' hover:text-blue-300 cursor-pointer')
-                    : 'text-gray-700' + (readonly ? '' : ' hover:text-blue-400 cursor-pointer')
-                }`}
-              >
-                {sub.starred ? '★' : '☆'}
-              </button>
-            </div>
-          ))}
+              {completedSubTasksOpen && completedSubTasks.map(renderSubTask)}
+            </>
+          )}
+          {incompleteSubTasks.map(renderSubTask)}
         </div>
       )}
     </div>
